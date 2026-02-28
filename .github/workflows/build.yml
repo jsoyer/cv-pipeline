@@ -1,0 +1,172 @@
+name: 🔨 Build PDFs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: 📄 Compile LaTeX
+    runs-on: ubuntu-latest
+    container:
+      image: texlive/texlive:latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 🔨 Build master CV & cover letter
+        run: |
+          export TEXINPUTS="$(pwd)/awesome-cv/:"
+          xelatex -output-directory=. "CV.tex"
+          xelatex -output-directory=. "CoverLetter.tex"
+
+      - name: 🎯 Build all applications
+        run: |
+          export TEXINPUTS="$(pwd)/awesome-cv/:"
+          for dir in applications/*/; do
+            [ -d "$dir" ] || continue
+            echo "Building: $dir"
+            for f in "$dir"*.tex; do
+              [ -f "$f" ] || continue
+              xelatex -output-directory="$dir" "$f"
+            done
+          done
+
+      - name: 🔍 Check for leftover placeholders
+        run: |
+          ERRORS=""
+          for f in applications/**/*.tex; do
+            [ -f "$f" ] || continue
+            # Skip master templates (only check tailored files)
+            basename="$(basename "$f")"
+            if echo "$f" | grep -q "applications/"; then
+              for pattern in '\[Company\]' '\[Position Title\]' 'Hiring Manager' 'Company Name'; do
+                if grep -q "$pattern" "$f"; then
+                  ERRORS="${ERRORS}  ✗ $f: contains placeholder '$pattern'\n"
+                fi
+              done
+            fi
+          done
+          if [ -n "$ERRORS" ]; then
+            printf "\n%b\n" "$ERRORS"
+            echo "❌ Placeholder check failed — templates not fully tailored"
+            exit 1
+          else
+            echo "✅ No leftover placeholders found"
+          fi
+
+      - name: 📝 Spell check
+        run: |
+          apt-get update -qq && apt-get install -y -qq aspell aspell-en > /dev/null 2>&1
+          ERRORS=""
+          for f in $(find . -name "*.tex" -not -path "./awesome-cv/*"); do
+            # Strip LaTeX commands, then spell check
+            MISSPELLED=$(cat "$f" \
+              | sed 's/\\[a-zA-Z]*{//g; s/[{}\\%$]//g' \
+              | aspell --lang=en --personal=./.aspell.en.pws list \
+              | sort -u)
+            if [ -n "$MISSPELLED" ]; then
+              ERRORS="${ERRORS}  ⚠️  $f: $(echo $MISSPELLED | tr '\n' ', ')\n"
+            fi
+          done
+          if [ -n "$ERRORS" ]; then
+            printf "\n📝 Possible misspellings:\n%b\n" "$ERRORS"
+            echo "⚠️  Spell check found potential issues (non-blocking)"
+          else
+            echo "✅ No spelling issues found"
+          fi
+
+      - name: ✅ Validate page counts
+        run: |
+          python3 -c "
+          import re, sys, glob
+
+          def pdf_pages(path):
+              with open(path, 'rb') as f:
+                  content = f.read()
+              m = re.search(rb'/Type\s*/Pages\b[^>]*/Count\s+(\d+)', content)
+              return int(m.group(1)) if m else -1
+
+          errors = []
+          for pdf in sorted(glob.glob('*.pdf') + glob.glob('applications/**/*.pdf', recursive=True)):
+              pages = pdf_pages(pdf)
+              name = pdf.split('/')[-1]
+              if 'CoverLetter' in name and pages > 1:
+                  errors.append(f'  ✗ {pdf}: {pages} pages (max 1)')
+              elif 'CV' in name and pages > 2:
+                  errors.append(f'  ✗ {pdf}: {pages} pages (max 2)')
+              else:
+                  print(f'  ✓ {pdf}: {pages} page(s)')
+
+          if errors:
+              print()
+              for e in errors:
+                  print(e)
+              print()
+              print('❌ Page count validation failed')
+              sys.exit(1)
+          else:
+              print()
+              print('✅ All page counts valid')
+          "
+
+      - name: 📤 Upload master PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-pdfs
+          path: "*.pdf"
+
+      - name: 📤 Upload application PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: application-pdfs
+          path: "applications/**/*.pdf"
+
+  variants:
+    name: 📄 Build variants (PDF/A + French)
+    runs-on: ubuntu-latest
+    container:
+      image: texlive/texlive:latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: 📦 Install Python dependencies
+        run: |
+          apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null 2>&1
+          pip3 install pyyaml --break-system-packages
+
+      - name: 🔒 Build PDF/A variant
+        run: |
+          export TEXINPUTS="$(pwd)/awesome-cv/:"
+          python3 scripts/render.py -d data/cv.yml -o CV-pdfa.tex --pdfa
+          xelatex -output-directory=. CV-pdfa.tex
+          if [ -f data/coverletter.yml ]; then
+            python3 scripts/render.py -d data/coverletter.yml -o CoverLetter-pdfa.tex --pdfa
+            xelatex -output-directory=. CoverLetter-pdfa.tex
+          fi
+
+      - name: 🌐 Build French variant
+        if: hashFiles('data/cv-fr.yml') != ''
+        run: |
+          export TEXINPUTS="$(pwd)/awesome-cv/:"
+          python3 scripts/render.py -d data/cv.yml -o CV-fr.tex -l fr
+          xelatex -output-directory=. CV-fr.tex
+
+      - name: 📤 Upload variant PDFs
+        uses: actions/upload-artifact@v4
+        with:
+          name: variant-pdfs
+          path: |
+            CV-pdfa.pdf
+            CoverLetter-pdfa.pdf
+            CV-fr.pdf

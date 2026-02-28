@@ -1,0 +1,71 @@
+name: 💼 LinkedIn Sync (On Demand)
+
+on:
+  workflow_dispatch:
+    inputs:
+      lang:
+        description: 'Language (en/fr/de/es)'
+        required: false
+        default: 'en'
+        type: choice
+        options:
+          - en
+          - fr
+          - de
+          - es
+      push:
+        description: 'Push to LinkedIn (default: dry-run)'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  linkedin-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml requests beautifulsoup4
+
+      - name: Install XeLaTeX
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y texlive-xetex texlive-latex-base texlive-latex-extra
+
+      - name: Build CV
+        run: |
+          make render LANG=${{ inputs.lang }}
+          make
+
+      - name: Run LinkedIn sync script
+        if: inputs.push == false
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+        run: |
+          echo "DRY-RUN MODE (push=${{ inputs.push }})"
+          python3 scripts/linkedin-sync.py --dry-run
+
+      - name: Push to LinkedIn
+        if: inputs.push == true
+        env:
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          LINKEDIN_PUSH: true
+        run: |
+          python3 scripts/linkedin-sync.py
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv-${{ inputs.lang }}
+          path: |
+            CV.pdf
+            CoverLetter.pdf
+          retention-days: 30

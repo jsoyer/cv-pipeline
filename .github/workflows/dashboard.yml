@@ -1,0 +1,46 @@
+name: 📊 Dashboard
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    name: 📊 Generate & Deploy Dashboard
+    # Run on push to main, on merged PRs, or manual trigger
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 📦 Install Python deps
+        run: pip install pyyaml -q
+
+      - name: 📊 Generate dashboard HTML
+        run: |
+          mkdir -p docs
+          python3 scripts/generate-dashboard.py --output-dir docs --no-gh
+          echo "✅ Dashboard generated: docs/index.html"
+          ls -lh docs/
+
+      - name: 🚀 Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          commit_message: "dashboard: update [skip ci]"
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"

@@ -1,0 +1,131 @@
+name: 📊 Sync to Notion
+
+on:
+  pull_request:
+    types: [opened, closed]
+    branches: [main]
+
+jobs:
+  sync:
+    # Only run for application branches
+    if: startsWith(github.head_ref, 'apply/')
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔍 Parse PR info
+        id: parse
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          # PR title format: "📄 Company — Position"
+          COMPANY=$(echo "$TITLE" | sed 's/^📄 //' | sed 's/ — .*//')
+          POSITION=$(echo "$TITLE" | sed 's/^.* — //')
+          BRANCH="${{ github.head_ref }}"
+          APP_DIR=$(echo "$BRANCH" | sed 's|apply/||')
+          PR_URL="${{ github.event.pull_request.html_url }}"
+
+          # Try to read job URL from the application directory
+          JOB_URL=""
+          if [ -f "applications/$APP_DIR/job.url" ]; then
+            JOB_URL=$(cat "applications/$APP_DIR/job.url")
+          fi
+
+          echo "company=$COMPANY" >> "$GITHUB_OUTPUT"
+          echo "position=$POSITION" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+          echo "job_url=$JOB_URL" >> "$GITHUB_OUTPUT"
+
+      - name: 📝 Create Notion entry
+        if: github.event.action == 'opened'
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        run: |
+          python3 -c "
+          import json, os, urllib.request
+
+          token = os.environ['NOTION_TOKEN']
+          db_id = os.environ['NOTION_DATABASE_ID']
+
+          properties = {
+              'Company': {'title': [{'text': {'content': '${{ steps.parse.outputs.company }}'}}]},
+              'Position': {'rich_text': [{'text': {'content': '${{ steps.parse.outputs.position }}'}}]},
+              'Status': {'select': {'name': 'Draft'}},
+              'Branch': {'rich_text': [{'text': {'content': '${{ steps.parse.outputs.branch }}'}}]},
+              'PR': {'url': '${{ steps.parse.outputs.pr_url }}'},
+              'Applied Date': {'date': {'start': '$(date +%Y-%m-%d)'}},
+          }
+
+          job_url = '${{ steps.parse.outputs.job_url }}'
+          if job_url:
+              properties['Job URL'] = {'url': job_url}
+
+          payload = json.dumps({'parent': {'database_id': db_id}, 'properties': properties}).encode()
+          req = urllib.request.Request(
+              'https://api.notion.com/v1/pages',
+              data=payload,
+              headers={
+                  'Authorization': f'Bearer {token}',
+                  'Content-Type': 'application/json',
+                  'Notion-Version': '2022-06-28',
+              },
+          )
+          with urllib.request.urlopen(req) as resp:
+              print(f'Created Notion entry: {json.loads(resp.read())[\"id\"]}')
+          "
+
+      - name: ✅ Update Notion status on merge
+        if: github.event.action == 'closed' && github.event.pull_request.merged == true
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+          NOTION_DATABASE_ID: ${{ secrets.NOTION_DATABASE_ID }}
+        run: |
+          python3 -c "
+          import json, os, urllib.request
+
+          token = os.environ['NOTION_TOKEN']
+          db_id = os.environ['NOTION_DATABASE_ID']
+          company = '${{ steps.parse.outputs.company }}'
+
+          # Search for existing entry
+          query = json.dumps({
+              'filter': {'property': 'Company', 'title': {'equals': company}}
+          }).encode()
+          req = urllib.request.Request(
+              f'https://api.notion.com/v1/databases/{db_id}/query',
+              data=query,
+              headers={
+                  'Authorization': f'Bearer {token}',
+                  'Content-Type': 'application/json',
+                  'Notion-Version': '2022-06-28',
+              },
+          )
+          with urllib.request.urlopen(req) as resp:
+              results = json.loads(resp.read())['results']
+
+          if not results:
+              print(f'No Notion entry found for {company}')
+              exit(0)
+
+          page_id = results[0]['id']
+
+          # Update status to Applied
+          payload = json.dumps({
+              'properties': {'Status': {'select': {'name': 'Applied'}}}
+          }).encode()
+          req = urllib.request.Request(
+              f'https://api.notion.com/v1/pages/{page_id}',
+              data=payload,
+              method='PATCH',
+              headers={
+                  'Authorization': f'Bearer {token}',
+                  'Content-Type': 'application/json',
+                  'Notion-Version': '2022-06-28',
+              },
+          )
+          with urllib.request.urlopen(req) as resp:
+              print(f'Updated {company} status to Applied')
+          "

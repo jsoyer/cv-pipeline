@@ -1,0 +1,242 @@
+name: 📎 PR Preview
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+
+jobs:
+  preview:
+    name: 📄 PDF Preview
+    runs-on: ubuntu-latest
+    container:
+      image: texlive/texlive:latest
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: 🔍 Find changed applications
+        id: changes
+        run: |
+          # Get list of changed .tex files in applications/
+          CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.sha }} -- 'applications/**/*.tex' 2>/dev/null || echo "")
+          if [ -z "$CHANGED" ]; then
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_changes=true" >> "$GITHUB_OUTPUT"
+            # Extract unique application directories
+            DIRS=$(echo "$CHANGED" | sed 's|/[^/]*$||' | sort -u | tr '\n' ' ')
+            echo "dirs=$DIRS" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 📝 Add DRAFT watermark
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          for dir in ${{ steps.changes.outputs.dirs }}; do
+            for f in "$dir"/*.tex; do
+              [ -f "$f" ] || continue
+              sed -i 's/\\begin{document}/\\usepackage{draftwatermark}\n\\SetWatermarkText{DRAFT}\n\\SetWatermarkScale{1.5}\n\\SetWatermarkColor[gray]{0.92}\n\\begin{document}/' "$f"
+            done
+          done
+
+      - name: 🔨 Build master CV
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          export TEXINPUTS="$(pwd)/awesome-cv/:"
+          xelatex -output-directory=. "CV.tex"
+
+      - name: 🔨 Build application PDFs
+        if: steps.changes.outputs.has_changes == 'true'
+        run: |
+          export TEXINPUTS="$(pwd)/awesome-cv/:"
+          for dir in ${{ steps.changes.outputs.dirs }}; do
+            echo "Building: $dir"
+            for f in "$dir"/*.tex; do
+              [ -f "$f" ] || continue
+              xelatex -output-directory="$dir" "$f"
+            done
+          done
+
+      - name: 📊 Score applications
+        if: steps.changes.outputs.has_changes == 'true'
+        id: score
+        run: |
+          pip install pyyaml -q
+          mkdir -p /tmp/ats-results
+
+          for dir in ${{ steps.changes.outputs.dirs }}; do
+            APP_NAME=$(basename "$dir")
+            JOB_FILE="$dir/job.txt"
+
+            if [ ! -f "$JOB_FILE" ]; then
+              echo "{\"no_job\": true}" > "/tmp/ats-results/${APP_NAME}.json"
+              continue
+            fi
+
+            # Score tailored CV (uses .tex files in app dir)
+            python3 scripts/ats-score.py "$dir" --json > "/tmp/ats-results/${APP_NAME}-tailored.json" 2>/dev/null || echo '{"score":0,"found_count":0,"missing_count":0,"total_keywords":0,"missing":[]}' > "/tmp/ats-results/${APP_NAME}-tailored.json"
+
+            # Score master CV against same job.txt
+            MASTER_DIR=$(mktemp -d)
+            cp CV.tex "$MASTER_DIR/"
+            cp "$JOB_FILE" "$MASTER_DIR/job.txt"
+            python3 scripts/ats-score.py "$MASTER_DIR" --json > "/tmp/ats-results/${APP_NAME}-master.json" 2>/dev/null || echo '{"score":0,"found_count":0,"missing_count":0,"total_keywords":0,"missing":[]}' > "/tmp/ats-results/${APP_NAME}-master.json"
+            rm -rf "$MASTER_DIR"
+
+            # Score cover letter (if coverletter.yml exists)
+            if [ -f "$dir/coverletter.yml" ]; then
+              python3 scripts/cl-score.py "$dir" --json > "/tmp/ats-results/${APP_NAME}-cl.json" 2>/dev/null || echo '{}' > "/tmp/ats-results/${APP_NAME}-cl.json"
+            fi
+          done
+
+      - name: 📏 Count pages
+        if: steps.changes.outputs.has_changes == 'true'
+        id: pages
+        run: |
+          python3 -c "
+          import re, glob, json, os
+          results = {}
+          for pdf in glob.glob('applications/**/*.pdf', recursive=True):
+              with open(pdf, 'rb') as f:
+                  content = f.read()
+              match = re.search(rb'/Type\s*/Pages\b[^>]*/Count\s+(\d+)', content)
+              pages = int(match.group(1)) if match else 0
+              name = os.path.basename(pdf)
+              results[name] = pages
+          with open('/tmp/page-counts.json', 'w') as f:
+              json.dump(results, f)
+          "
+
+      - name: 📤 Upload preview PDFs
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: actions/upload-artifact@v4
+        id: upload
+        with:
+          name: preview-pdfs
+          path: "applications/**/*.pdf"
+
+      - name: 💬 Comment on PR
+        if: steps.changes.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+
+            // Read page counts
+            let pageCounts = {};
+            try { pageCounts = JSON.parse(fs.readFileSync('/tmp/page-counts.json', 'utf8')); } catch(e) {}
+
+            // Build report per application
+            const dirs = '${{ steps.changes.outputs.dirs }}'.trim().split(/\s+/);
+            let sections = [];
+
+            for (const dir of dirs) {
+              const appName = path.basename(dir);
+              let section = `### ${appName}\n\n`;
+
+              // ATS scores
+              const masterPath = `/tmp/ats-results/${appName}-master.json`;
+              const tailoredPath = `/tmp/ats-results/${appName}-tailored.json`;
+              const noJobPath = `/tmp/ats-results/${appName}.json`;
+
+              if (fs.existsSync(noJobPath)) {
+                section += `> No \`job.txt\` found — ATS scoring skipped\n\n`;
+              } else if (fs.existsSync(masterPath) && fs.existsSync(tailoredPath)) {
+                const master = JSON.parse(fs.readFileSync(masterPath, 'utf8'));
+                const tailored = JSON.parse(fs.readFileSync(tailoredPath, 'utf8'));
+                const diff = tailored.score - master.score;
+                const sign = diff >= 0 ? '+' : '';
+                const emoji = diff > 0 ? '📈' : (diff === 0 ? '➡️' : '📉');
+
+                section += `#### ATS Score\n`;
+                section += `| | Score | Keywords |\n`;
+                section += `|---|---|---|\n`;
+                section += `| Master CV | ${master.score}% | ${master.found_count}/${master.total_keywords} |\n`;
+                section += `| **Tailored CV** | **${tailored.score}%** | **${tailored.found_count}/${tailored.total_keywords}** |\n`;
+                section += `| ${emoji} Improvement | **${sign}${diff.toFixed(1)}%** | ${sign}${tailored.found_count - master.found_count} |\n\n`;
+
+                // Top missing keywords (max 8)
+                if (tailored.missing && tailored.missing.length > 0) {
+                  const topMissing = tailored.missing
+                    .sort((a, b) => b.weight - a.weight)
+                    .slice(0, 8)
+                    .map(m => `\`${m.keyword}\``);
+                  section += `**Missing keywords:** ${topMissing.join(', ')}\n\n`;
+                }
+
+                // Cover letter score
+                const clPath = `/tmp/ats-results/${appName}-cl.json`;
+                if (fs.existsSync(clPath)) {
+                  try {
+                    const cl = JSON.parse(fs.readFileSync(clPath, 'utf8'));
+                    if (cl.score !== undefined) {
+                      const clEmoji = cl.score >= 80 ? '🟢' : cl.score >= 60 ? '🟡' : '🟠';
+                      section += `#### Cover Letter Score\n`;
+                      section += `| | Score |\n|---|---|\n`;
+                      section += `| ${clEmoji} Cover Letter | **${cl.score}/100** |\n`;
+                      section += `| Keywords | ${cl.keyword_coverage}/40 · Personalization ${cl.personalization}/25 · Structure ${cl.structure}/20 |\n\n`;
+                      if (cl.tips && cl.tips.length > 0) {
+                        section += `**CL Tips:** ${cl.tips.slice(0, 3).join(' · ')}\n\n`;
+                      }
+                    }
+                  } catch(e) {}
+                }
+              }
+
+              // Page counts
+              const appPdfs = Object.entries(pageCounts).filter(([name]) => {
+                return name.startsWith('CV') || name.startsWith('CoverLetter');
+              });
+
+              if (appPdfs.length > 0) {
+                section += `#### Pages\n`;
+                section += `| Document | Pages | Status |\n`;
+                section += `|---|---|---|\n`;
+                for (const [name, pages] of appPdfs) {
+                  const isCL = name.startsWith('CoverLetter');
+                  const limit = isCL ? 1 : 2;
+                  const status = pages <= limit ? '✅' : '❌';
+                  const label = isCL ? 'Cover Letter' : 'CV';
+                  section += `| ${label} | ${pages} | ${status} (max ${limit}) |\n`;
+                }
+                section += '\n';
+              }
+
+              sections.push(section);
+            }
+
+            const body = `## 📄 PR Preview\n\n${sections.join('\n---\n\n')}📥 [Download Preview PDFs](${runUrl}#artifacts)\n\n*Auto-generated by CI — DRAFT watermark applied*`;
+
+            // Find existing preview comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.data.find(c => c.body.includes('📄 PR Preview'));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

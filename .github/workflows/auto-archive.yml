@@ -1,0 +1,55 @@
+name: 📦 Auto-Archive Stale
+
+on:
+  schedule:
+    - cron: "0 9 1 * *"  # Monthly at 9am on 1st
+  workflow_dispatch:
+
+jobs:
+  archive:
+    name: 📦 Archive stale applications
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🔍 Find stale merged PRs
+        run: |
+          # Get merged PRs from apply/* branches older than 30 days
+          STALE_BRANCHES=$(gh pr list --state merged \
+            --base main \
+            --limit 100 \
+            --jq '.[] | select(.headRefName | startswith("apply/")) | select(.mergedAt < "'$(date -d '30 days ago' -I)'") | .headRefName' 2>/dev/null)
+          
+          if [ -z "$STALE_BRANCHES" ]; then
+            echo "No stale applications to archive."
+            exit 0
+          fi
+          
+          echo "Found stale branches:"
+          echo "$STALE_BRANCHES"
+          
+          for branch in $STALE_BRANCHES; do
+            NAME=${branch#apply/}
+            echo "📦 Archiving $NAME..."
+            
+            # Move to archive
+            if [ -d "applications/$NAME" ]; then
+              mkdir -p archive
+              mv "applications/$NAME" "archive/$NAME"
+              echo "✅ Archived: applications/$NAME → archive/$NAME"
+            fi
+            
+            # Delete branch locally and remotely
+            git branch -d "$branch" 2>/dev/null || true
+            git push origin --delete "$branch" 2>/dev/null || true
+          done
+          
+          # Commit if there are changes
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -A
+            git commit -m "chore: archive stale applications" || true
+            git push
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

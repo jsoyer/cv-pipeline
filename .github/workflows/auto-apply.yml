@@ -1,0 +1,214 @@
+name: 🤖 Auto Apply
+
+on:
+  # Trigger 1: Full pipeline from URL
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Job posting URL'
+        required: true
+        type: string
+      company:
+        description: 'Company name (auto-detected from URL if empty)'
+        required: false
+        type: string
+        default: ''
+      position:
+        description: 'Position title (auto-detected from URL if empty)'
+        required: false
+        type: string
+        default: ''
+      ai_provider:
+        description: 'AI provider for tailoring'
+        required: false
+        default: 'gemini'
+        type: choice
+        options:
+          - gemini
+          - claude
+          - openai
+          - mistral
+
+  # Trigger 2: Re-tailor when 'auto-apply' label added to a PR
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # ─────────────────────────────────────────────────────────
+  # Job 1: Full pipeline from scratch (workflow_dispatch)
+  # ─────────────────────────────────────────────────────────
+  full-pipeline:
+    name: 🚀 Full Apply Pipeline
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    container:
+      image: texlive/texlive:latest
+
+    steps:
+      - name: 📥 Checkout main
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ⚙️ Setup git + tools
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global --add safe.directory '*'
+          # Install gh CLI if not present
+          if ! command -v gh &>/dev/null; then
+            apt-get update -qq && apt-get install -y -qq gh 2>/dev/null || \
+            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | \
+              dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg 2>/dev/null && \
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | \
+              tee /etc/apt/sources.list.d/github-cli.list > /dev/null && \
+            apt-get update -qq && apt-get install -y -qq gh 2>/dev/null || true
+          fi
+
+      - name: 📦 Install Python deps
+        run: |
+          pip3 install pyyaml requests beautifulsoup4 \
+            google-generativeai anthropic openai mistralai \
+            --break-system-packages -q 2>/dev/null || \
+          pip install pyyaml requests beautifulsoup4 \
+            google-generativeai anthropic openai mistralai -q
+
+      - name: 🔀 Create branch + scaffold application
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          MAKE_ARGS="URL=${{ inputs.url }}"
+          if [ -n "${{ inputs.company }}" ]; then
+            MAKE_ARGS="$MAKE_ARGS COMPANY=${{ inputs.company }}"
+          fi
+          if [ -n "${{ inputs.position }}" ]; then
+            MAKE_ARGS="$MAKE_ARGS POSITION=${{ inputs.position }}"
+          fi
+          echo "Running: make apply $MAKE_ARGS"
+          make apply $MAKE_ARGS
+
+      - name: 🔍 Detect application NAME
+        id: detect
+        run: |
+          # Find most recently created apply/* branch
+          NAME=$(git branch --sort=-committerdate | grep 'apply/' | head -1 | \
+                 sed 's|.*apply/||' | tr -d ' \n')
+          if [ -z "$NAME" ]; then
+            echo "❌ Could not detect application NAME from branches"
+            git branch --sort=-committerdate | head -10
+            exit 1
+          fi
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "✅ Detected: $NAME"
+
+      - name: 🤖 AI Tailor
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          git checkout "apply/${{ steps.detect.outputs.name }}"
+          make tailor NAME=${{ steps.detect.outputs.name }} AI=${{ inputs.ai_provider }}
+
+      - name: 🔨 Compile PDFs
+        run: |
+          export TEXINPUTS="$(pwd)/awesome-cv/:"
+          make app NAME=${{ steps.detect.outputs.name }}
+
+      - name: 📢 Mark PR ready
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr ready "apply/${{ steps.detect.outputs.name }}" 2>/dev/null && \
+            echo "✅ PR marked ready: apply/${{ steps.detect.outputs.name }}" || \
+            echo "⚠️  Could not mark PR ready (may already be ready or not exist)"
+
+  # ─────────────────────────────────────────────────────────
+  # Job 2: Re-tailor + compile (label 'auto-apply' on PR)
+  # ─────────────────────────────────────────────────────────
+  re-tailor:
+    name: 🔄 Re-tailor + Compile
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'labeled' &&
+      github.event.label.name == 'auto-apply' &&
+      startsWith(github.head_ref, 'apply/')
+    runs-on: ubuntu-latest
+    container:
+      image: texlive/texlive:latest
+
+    steps:
+      - name: 📥 Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          submodules: recursive
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: ⚙️ Setup git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git config --global --add safe.directory '*'
+
+      - name: 📦 Install Python deps
+        run: |
+          pip3 install pyyaml requests beautifulsoup4 \
+            google-generativeai anthropic openai mistralai \
+            --break-system-packages -q 2>/dev/null || \
+          pip install pyyaml requests beautifulsoup4 \
+            google-generativeai anthropic openai mistralai -q
+
+      - name: 🔍 Extract NAME from branch
+        id: name
+        run: |
+          NAME=$(echo "${{ github.head_ref }}" | sed 's|apply/||')
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Application: $NAME"
+
+      - name: 🤖 AI Tailor
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+        run: |
+          make tailor NAME=${{ steps.name.outputs.name }}
+
+      - name: 🔨 Compile PDFs
+        run: |
+          export TEXINPUTS="$(pwd)/awesome-cv/:"
+          make app NAME=${{ steps.name.outputs.name }}
+
+      - name: 💾 Commit + push tailor changes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          APP_DIR="applications/${{ steps.name.outputs.name }}"
+          git add "$APP_DIR/cv-tailored.yml" "$APP_DIR/coverletter.yml" 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "auto-apply: re-tailor ${{ steps.name.outputs.name }}"
+            git push
+          fi
+
+      - name: 📢 Mark PR ready
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr ready "${{ github.head_ref }}" 2>/dev/null && \
+            echo "✅ PR marked ready" || \
+            echo "⚠️  Could not mark PR ready (may already be ready)"

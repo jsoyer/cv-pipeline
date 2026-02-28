@@ -1,0 +1,68 @@
+name: 🏥 Weekly CV Health Check
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Monday 9am
+  workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force check even if recent'
+        required: false
+        default: 'false'
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml requests beautifulsoup4
+
+      - name: Check CV compiles
+        run: |
+          make render || exit 1
+
+      - name: Check PDF pages
+        run: |
+          pages=$(pdfinfo CV.pdf 2>/dev/null | grep Pages | awk '{print $2}')
+          if [ "$pages" -gt 2 ]; then
+            echo "ERROR: CV has $pages pages (max 2)"
+            exit 1
+          fi
+          echo "CV pages: $pages (OK)"
+
+      - name: Run ATS score check
+        run: |
+          if [ -f job.txt ]; then
+            score=$(python3 scripts/ats-score.py job.txt --json | python3 -c "import sys,json; print(json.load(sys.stdin)['score'])")
+            echo "ATS Score: $score"
+            if [ "$score" -lt 70 ]; then
+              echo "WARNING: ATS score below threshold"
+            fi
+          fi
+
+      - name: Check for spell errors
+        run: |
+          if command -v aspell &> /dev/null; then
+            aspell list < CV.tex | head -20 || true
+          fi
+
+      - name: Upload CV PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: cv-weekly
+          path: CV.pdf
+          retention-days: 7
+
+      - name: Notification
+        if: failure()
+        run: |
+          echo "CV Health Check Failed"

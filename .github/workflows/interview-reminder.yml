@@ -1,0 +1,35 @@
+name: 📅 Interview Reminders
+
+on:
+  pull_request:
+    types: [merged]
+    branches: [main]
+
+jobs:
+  schedule-reminders:
+    name: Schedule interview reminders
+    if: startsWith(github.event.pull_request.head.ref, 'apply/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract application info
+        run: |
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_URL="${{ github.event.pull_request.html_url }}"
+          echo "Application: $PR_TITLE"
+          cat << 'ISSUE_BODY' > /tmp/body.txt
+          Time to follow up on this application!
+          
+          PR: $PR_URL
+          
+          - [ ] Send follow-up email
+          - [ ] Update status in tracker
+          ISSUE_BODY
+          gh issue create \
+            --title "Interview Follow-up - 7 days - $PR_TITLE" \
+            --body-file /tmp/body.txt \
+            --label "reminder"
+          
+      - name: Comment on PR
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --body "Interview reminders scheduled! You'll receive follow-up prompts."

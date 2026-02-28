@@ -1,0 +1,31 @@
+# LaTeX auxiliary files
+*.aux
+*.log
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+
+# Generated files
+*.pdf
+*.tex
+
+# Environment variables (API keys)
+.env
+
+# Application-specific content (private)
+applications/
+
+# macOS
+.DS_Store
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+venv/
+
+# Editor temp files
+.*sw[op]
+*~

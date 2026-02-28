@@ -1,0 +1,105 @@
+name: 🔔 Notifications
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+  workflow_run:
+    workflows: ["🔨 Build PDFs"]
+    types: [completed]
+
+jobs:
+  notify-merge:
+    name: 📤 Application sent
+    if: >
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'apply/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📤 Send Slack notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: env.SLACK_WEBHOOK_URL != ''
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          URL="${{ github.event.pull_request.html_url }}"
+          curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"✅ Application sent: ${TITLE}\n${URL}\"}" \
+            && echo "✅ Slack notification sent" \
+            || echo "⚠️  Slack webhook failed (non-blocking)"
+
+      - name: 📤 Send Discord notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        if: env.DISCORD_WEBHOOK_URL != ''
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          URL="${{ github.event.pull_request.html_url }}"
+          curl -sf -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"✅ Application sent: ${TITLE}\n${URL}\"}" \
+            && echo "✅ Discord notification sent" \
+            || echo "⚠️  Discord webhook failed (non-blocking)"
+
+      - name: 📤 Send Telegram notification
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        if: env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        run: |
+          TITLE="${{ github.event.pull_request.title }}"
+          URL="${{ github.event.pull_request.html_url }}"
+          curl -sf -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+            -d "chat_id=$TELEGRAM_CHAT_ID" \
+            -d "text=✅ Application sent: ${TITLE}%0A${URL}" \
+            && echo "✅ Telegram notification sent" \
+            || echo "⚠️  Telegram bot failed (non-blocking)"
+
+  notify-failure:
+    name: 🚨 CI failure
+    if: >
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📤 Send Slack notification
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: env.SLACK_WEBHOOK_URL != ''
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          RUN_URL="${{ github.event.workflow_run.html_url }}"
+          curl -sf -X POST "$SLACK_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\": \"❌ CI failed on: ${BRANCH}\n${RUN_URL}\"}" \
+            && echo "✅ Slack notification sent" \
+            || echo "⚠️  Slack webhook failed (non-blocking)"
+
+      - name: 📤 Send Discord notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        if: env.DISCORD_WEBHOOK_URL != ''
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          RUN_URL="${{ github.event.workflow_run.html_url }}"
+          curl -sf -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "{\"content\": \"❌ CI failed on: ${BRANCH}\n${RUN_URL}\"}" \
+            && echo "✅ Discord notification sent" \
+            || echo "⚠️  Discord webhook failed (non-blocking)"
+
+      - name: 📤 Send Telegram notification
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        if: env.TELEGRAM_BOT_TOKEN != '' && env.TELEGRAM_CHAT_ID != ''
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          RUN_URL="${{ github.event.workflow_run.html_url }}"
+          curl -sf -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/sendMessage" \
+            -d "chat_id=$TELEGRAM_CHAT_ID" \
+            -d "text=❌ CI failed on: ${BRANCH}%0A${RUN_URL}" \
+            && echo "✅ Telegram notification sent" \
+            || echo "⚠️  Telegram bot failed (non-blocking)"

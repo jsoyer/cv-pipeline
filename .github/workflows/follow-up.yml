@@ -1,0 +1,117 @@
+name: 📬 Follow-up Reminders
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday 9am UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  check-stale:
+    name: 🔍 Check stale applications
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: ⏰ Check deadlines
+        run: |
+          pip3 install pyyaml --break-system-packages -q
+          python3 -c "
+          import yaml, datetime, os, sys
+          today = datetime.date.today()
+          warnings = []
+          for d in sorted(os.listdir('applications')) if os.path.isdir('applications') else []:
+              meta = f'applications/{d}/meta.yml'
+              if not os.path.exists(meta):
+                  continue
+              with open(meta) as f:
+                  data = yaml.safe_load(f)
+              dl = data.get('deadline')
+              if not dl:
+                  continue
+              if isinstance(dl, str):
+                  dl = datetime.datetime.strptime(dl, '%Y-%m-%d').date()
+              days = (dl - today).days
+              if 0 <= days <= 3:
+                  warnings.append(f'🔴 {d}: deadline in {days} days ({dl})')
+              elif 0 <= days <= 7:
+                  warnings.append(f'🟡 {d}: deadline in {days} days ({dl})')
+          if warnings:
+              print('⏰ Upcoming deadlines:')
+              for w in warnings:
+                  print(f'  {w}')
+              with open(os.environ.get('GITHUB_OUTPUT', '/dev/null'), 'a') as f:
+                  f.write(f'has_deadlines=true\n')
+                  f.write(f'deadline_list={chr(10).join(warnings)}\n')
+          else:
+              print('✅ No upcoming deadlines')
+          " || true
+
+      - name: 📬 Create follow-up issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const STALE_DAYS = 14;
+            const now = new Date();
+
+            const { data: prs } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            const stalePRs = prs.filter(pr => {
+              if (!pr.head.ref.startsWith('apply/')) return false;
+              const created = new Date(pr.created_at);
+              const days = (now - created) / (1000 * 60 * 60 * 24);
+              return days > STALE_DAYS;
+            });
+
+            // Get existing follow-up issues
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'follow-up',
+              per_page: 100,
+            });
+
+            for (const pr of stalePRs) {
+              const name = pr.head.ref.replace('apply/', '');
+              const days = Math.floor((now - new Date(pr.created_at)) / (1000 * 60 * 60 * 24));
+
+              if (issues.find(i => i.title.includes(name))) {
+                console.log(`⏭️  Follow-up already exists: ${name}`);
+                continue;
+              }
+
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `📬 Follow up: ${name} (${days} days)`,
+                body: [
+                  `Application **${name}** has been open for **${days} days**.`,
+                  ``,
+                  `- PR: ${pr.html_url}`,
+                  `- Created: ${pr.created_at.split('T')[0]}`,
+                  ``,
+                  `**Action needed:**`,
+                  `- [ ] Send follow-up email`,
+                  `- [ ] Update application status`,
+                  `- [ ] Close PR if no longer pursuing`,
+                ].join('\n'),
+                labels: ['follow-up'],
+              });
+
+              console.log(`✅ Created follow-up: ${name} (${days} days)`);
+            }
+
+            if (stalePRs.length === 0) {
+              console.log('✅ No stale applications found');
+            }
