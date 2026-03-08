@@ -359,11 +359,11 @@ class ArchiveScreen(Screen):
             else:
                 yield Input(placeholder="Application name (e.g. 2026-02-snowflake)", id="name")
             yield Static("Outcome:")
-            yield Button("✅ Offer",    id="btn-offer",    variant="success")
-            yield Button("❌ Rejected", id="btn-rejected", variant="error")
-            yield Button("👻 Ghosted",  id="btn-ghosted")
-            yield Button("🗣️ Interview (ongoing)", id="btn-interview")
-            yield Button("Archive (no outcome change)", id="btn-nooutcome")
+            yield Button("Offer",              id="btn-offer",     variant="success")
+            yield Button("Rejected",           id="btn-rejected",  variant="error")
+            yield Button("Ghosted",            id="btn-ghosted")
+            yield Button("Interview (ongoing)",id="btn-interview")
+            yield Button("Archive (no change)",id="btn-nooutcome")
         yield Footer()
 
     def _get_name(self) -> str:

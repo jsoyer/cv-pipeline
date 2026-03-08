@@ -30,7 +30,7 @@ Job searching is repetitive, error-prone, and time-consuming. You write the same
 
 **CV Pipeline automates the entire process.** Write your background once in YAML. For each job, AI tailors your CV and cover letter, the system scores it against ATS keywords, renders production-quality PDFs via [Awesome-CV](https://github.com/posquit0/Awesome-CV) + XeLaTeX, and GitHub Actions handles CI/CD, releases, and reminders.
 
-I built this for my own job search and used it to apply at **Anthropic** -- the company behind Claude. The pipeline handled everything from initial tailoring to interview prep.
+I built this for my own job search and used it to apply at **Anthropic** — the company behind Claude. The pipeline handled everything from initial tailoring to interview prep.
 
 ---
 
@@ -97,15 +97,15 @@ flowchart TD
 | Feature | What it does |
 |---------|-------------|
 | **[Awesome-CV](https://github.com/posquit0/Awesome-CV) rendering** | Beautiful, professional PDFs via the most popular LaTeX CV template (20k+ stars) |
-| **5 AI providers** | Gemini, Claude, OpenAI, Mistral, Ollama -- swap with `AI=` flag |
+| **5 AI providers** | Gemini, Claude, OpenAI, Mistral, Ollama — swap with `AI=` flag |
 | **YAML source of truth** | No LaTeX editing. AI outputs YAML. render.py handles everything. |
-| **ATS keyword scoring** | Section-aware scoring, weighted keywords, gap analysis -- no API needed |
+| **ATS keyword scoring** | Section-aware scoring, weighted keywords, gap analysis — no API needed |
 | **Full interview pipeline** | Prep notes, STAR stories, mock interviews, elevator pitches, salary benchmarks |
 | **Outreach automation** | LinkedIn messages, recruiter emails, thank-you notes, follow-ups |
 | **Application tracking** | Kanban board, funnel dashboard, effectiveness analysis, deadline alerts |
 | **14 GitHub Actions** | PDF build, PR preview with DRAFT watermark, auto-release, Notion sync, reminders |
 | **Multi-language** | English + French, with AI translation |
-| **99 unit tests** | Rendering, AI providers, shared utilities -- all tested |
+| **99 unit tests** | Rendering, AI providers, shared utilities — all tested |
 
 ---
 
@@ -157,7 +157,7 @@ Choose your LLM with the `AI=` flag. Override the model with `MODEL=`.
 | **Claude** | `ANTHROPIC_API_KEY` | claude-sonnet-4-6 | claude-haiku-4-5 |
 | **OpenAI** | `OPENAI_API_KEY` | gpt-4o | gpt-4o-mini |
 | **Mistral** | `MISTRAL_API_KEY` | mistral-large-latest | mistral-small-latest |
-| **Ollama** | `OLLAMA_HOST` / `OLLAMA_MODEL` | llama3 | -- |
+| **Ollama** | `OLLAMA_HOST` / `OLLAMA_MODEL` | llama3 | N/A (local) |
 
 All providers include exponential backoff on rate limits and automatic fallback to smaller models.
 
@@ -193,6 +193,8 @@ cv-pipeline/
 │   ├── cv-fr.yml               # French version
 │   ├── cv-schema.json          # JSON Schema for validation
 │   └── coverletter.yml         # Cover letter content
+├── examples/
+│   └── meta.yml                # Sample application metadata template
 ├── scripts/
 │   ├── lib/
 │   │   ├── ai.py               # Multi-provider AI caller (retry, fallback)
@@ -204,7 +206,7 @@ cv-pipeline/
 ├── tests/                      # 99 unit tests
 ├── .github/workflows/          # 14 CI/CD workflows
 ├── Makefile                    # 83+ targets
-└── .env.example                # API keys template
+└── .env.example                # API keys + notification webhooks
 ```
 
 ---
@@ -289,7 +291,7 @@ make archive-app NAME=... OUTCOME=offer       # Archive with summary + git tag
 
 | Module | Description |
 |--------|-------------|
-| `ai.py` | Unified LLM caller -- 5 providers, retry with backoff, model fallback, JSON validation |
+| `ai.py` | Unified LLM caller — 5 providers, retry with backoff, model fallback, JSON validation |
 | `common.py` | Paths, YAML loading, stop words, structured logging, timeout constants |
 
 ### Intelligence & Research (7)
@@ -386,10 +388,10 @@ python -m pytest tests/ -v    # 99 tests
 
 This repo contains **sample data only** (Jane Doe). Your real CV data stays in your private fork:
 
-- `data/cv.yml` -- sample CV (anonymized)
-- `applications/` -- gitignored
-- `.env` -- gitignored (API keys never committed)
-- `*.pdf` -- gitignored
+- `data/cv.yml` — sample CV (anonymized)
+- `applications/` — gitignored
+- `.env` — gitignored (API keys never committed)
+- `*.pdf` — gitignored
 
 Fork it, replace `data/cv.yml` with your own content, and you're ready to go.
 
@@ -397,8 +399,8 @@ Fork it, replace `data/cv.yml` with your own content, and you're ready to go.
 
 ## Credits
 
-- **[Awesome-CV](https://github.com/posquit0/Awesome-CV)** by [posquit0](https://github.com/posquit0) -- the LaTeX template that makes the PDFs beautiful
-- **[Claude Code](https://claude.ai/claude-code)** by Anthropic -- built all the automation, scripts, and CI/CD
+- **[Awesome-CV](https://github.com/posquit0/Awesome-CV)** by [posquit0](https://github.com/posquit0) — the LaTeX template that makes the PDFs beautiful
+- **[Claude Code](https://claude.ai/claude-code)** by Anthropic — built all the automation, scripts, and CI/CD
 
 ---
 

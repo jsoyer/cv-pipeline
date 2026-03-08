@@ -25,12 +25,17 @@ applications/
 # macOS
 .DS_Store
 
-# Python cache
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
 .pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
 venv/
+.venv/
 
 # Editor temp files
 .*sw[op]
