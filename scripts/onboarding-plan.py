@@ -44,9 +44,8 @@ first 90 days. Be specific, practical, and role-aware. Base every recommendation
 the job description and company context provided.
 
 ## Candidate
-Jérôme Soyer — incoming {position} at {company}.
-Background: 15+ years in technology sales and SE leadership, cybersecurity/data/SaaS.
-Previously scaled SE organisations to 50+ HC. Expert in ARR growth, M&A integration.
+{candidate_name} — incoming {position} at {company}.
+{candidate_profile}
 
 ## Job Description
 {job_excerpt}
@@ -160,6 +159,18 @@ def main():
     company  = meta.get("company", app_dir.name)
     position = meta.get("position", "the role")
 
+    cv_src = app_dir / "cv-tailored.yml"
+    if not cv_src.exists():
+        cv_src = REPO_ROOT / "data" / "cv.yml"
+    cv_data = {}
+    if cv_src.exists():
+        with open(cv_src, encoding="utf-8") as f:
+            cv_data = yaml.safe_load(f) or {}
+    personal = cv_data.get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+    profile = cv_data.get("profile", "")
+    candidate_profile = _strip_bold(str(profile))[:400] if profile else ""
+
     job_excerpt     = _read(app_dir / "job.txt", 2000) or "(no job.txt)"
     research_excerpt = _read(app_dir / "company-research.md", 1500) or "(no company-research.md)"
 
@@ -167,6 +178,8 @@ def main():
     print(f"   Position: {position} | AI: {args.ai}...")
 
     prompt = PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
+        candidate_profile=candidate_profile,
         company=company,
         position=position,
         job_excerpt=job_excerpt,

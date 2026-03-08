@@ -68,9 +68,8 @@ You are an executive coach preparing a senior technology sales leader for a job 
 Create a tight, scannable one-page brief to review in the 30 minutes before the interview.
 
 ## Candidate
-Jérôme Soyer — Regional VP of Sales Engineering at Varonis, Paris.
-Expert in scaling SE organisations (50+ HC), driving ARR growth, M&A integration, \
-cybersecurity/data/SaaS. French native, fluent English.
+{candidate_name} — {candidate_position}.
+{profile_excerpt}
 
 ## Target
 **Company:** {company}
@@ -178,6 +177,7 @@ def main():
     if not cv_src.exists():
         cv_src = REPO_ROOT / "data" / "cv.yml"
     profile_excerpt = ""
+    cv_data = {}
     if cv_src.exists():
         with open(cv_src, encoding="utf-8") as f:
             cv_data = yaml.safe_load(f) or {}
@@ -185,10 +185,16 @@ def main():
         profile_excerpt = re.sub(r"\*\*(.+?)\*\*", r"\1",
                                   profile if isinstance(profile, str) else "")[:600]
 
+    personal = cv_data.get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+    candidate_position = personal.get("position", "")
+
     print(f"📋 Generating interview brief — {company}")
     print(f"   Stage: {stage} | AI: {args.ai}...")
 
     prompt = PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
+        candidate_position=candidate_position,
         company=company,
         position=position,
         stage=stage,

@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0d1117"/>
+      <stop offset="100%" stop-color="#161b22"/>
+    </linearGradient>
+    <linearGradient id="accent-line" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#58a6ff" stop-opacity="0"/>
+      <stop offset="15%" stop-color="#58a6ff" stop-opacity="1"/>
+      <stop offset="85%" stop-color="#58a6ff" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#58a6ff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1280" height="640" fill="url(#bg)"/>
+
+  <!-- Subtle top border accent -->
+  <rect x="0" y="0" width="1280" height="2" fill="#58a6ff" opacity="0.6"/>
+
+  <!-- Title -->
+  <text x="640" y="210" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="72" font-weight="700" fill="#f0f6fc"
+        letter-spacing="2">CV Pipeline</text>
+
+  <!-- Subtitle -->
+  <text x="640" y="275" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="28" font-weight="400" fill="#8b949e"
+        letter-spacing="1">AI-Powered Job Application Engine</text>
+
+  <!-- Divider line -->
+  <rect x="240" y="310" width="800" height="1" fill="url(#accent-line)"/>
+
+  <!-- Built on Awesome-CV -->
+  <text x="640" y="360" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="20" font-weight="400" fill="#58a6ff"
+        letter-spacing="0.5">Built on Awesome-CV</text>
+
+  <!-- Stats row background -->
+  <rect x="100" y="460" width="1080" height="80" rx="12" ry="12"
+        fill="#161b22" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Stats -->
+  <text x="230" y="508" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="32" font-weight="700" fill="#f0f6fc">67</text>
+  <text x="230" y="530" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="14" font-weight="400" fill="#8b949e">Scripts</text>
+
+  <!-- Separator dot -->
+  <circle cx="390" cy="500" r="3" fill="#30363d"/>
+
+  <text x="500" y="508" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="32" font-weight="700" fill="#f0f6fc">5</text>
+  <text x="500" y="530" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="14" font-weight="400" fill="#8b949e">AI Providers</text>
+
+  <!-- Separator dot -->
+  <circle cx="640" cy="500" r="3" fill="#30363d"/>
+
+  <text x="780" y="508" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="32" font-weight="700" fill="#f0f6fc">14</text>
+  <text x="780" y="530" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="14" font-weight="400" fill="#8b949e">CI/CD Workflows</text>
+
+  <!-- Separator dot -->
+  <circle cx="920" cy="500" r="3" fill="#30363d"/>
+
+  <text x="1050" y="508" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="32" font-weight="700" fill="#f0f6fc">99</text>
+  <text x="1050" y="530" text-anchor="middle"
+        font-family="system-ui, -apple-system, 'Segoe UI', sans-serif"
+        font-size="14" font-weight="400" fill="#8b949e">Tests</text>
+
+  <!-- Bottom border accent -->
+  <rect x="0" y="638" width="1280" height="2" fill="#58a6ff" opacity="0.3"/>
+</svg>

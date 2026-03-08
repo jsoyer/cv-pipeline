@@ -1,0 +1,62 @@
+Senior Software Engineer — Nimbus Technologies
+Location: Berlin, Germany (Hybrid — 3 days on-site)
+Posted: 2026-02-20
+
+===============================================================
+
+About Us
+--------
+Nimbus Technologies builds cloud-native observability tools used by
+engineering teams at over 400 companies worldwide. Our platform ingests
+billions of events per day and turns them into actionable insights,
+helping SREs and developers reduce incident response time by 60%.
+Founded in 2019 and backed by Series C funding, we are growing fast
+and looking for talented engineers to shape the next generation of our
+distributed data pipeline.
+
+The Role
+--------
+We are looking for a Senior Software Engineer to join our Core Platform
+team. You will design, build, and operate the high-throughput ingestion
+and query services that power our product. This is a hands-on role
+where you will split your time between writing code, reviewing designs,
+and mentoring junior engineers.
+
+Responsibilities
+----------------
+- Design and implement scalable microservices in Go and Rust
+- Own end-to-end delivery of features from RFC to production rollout
+- Improve system reliability, targeting 99.95% uptime SLAs
+- Participate in on-call rotation (roughly one week per quarter)
+- Collaborate with Product and Design to refine requirements
+- Conduct code reviews and contribute to internal engineering standards
+- Mentor mid-level and junior engineers through pairing and tech talks
+
+Requirements
+------------
+- 5+ years of professional software engineering experience
+- Strong proficiency in Go, Rust, or a similar systems language
+- Deep understanding of distributed systems (consensus, partitioning,
+  replication)
+- Experience operating services on Kubernetes in production
+- Solid grasp of observability: metrics, traces, and structured logging
+- Comfortable with CI/CD pipelines (GitHub Actions, ArgoCD, or similar)
+- Excellent written and verbal communication in English
+
+Preferred Qualifications
+------------------------
+- Experience with Apache Kafka, NATS, or Pulsar
+- Familiarity with ClickHouse, TimescaleDB, or other OLAP databases
+- Contributions to open-source projects
+- Public speaking or technical writing track record
+- Working knowledge of German (any level)
+
+Benefits
+--------
+- Competitive salary: EUR 95,000 - 120,000 depending on experience
+- Employee stock option plan (ESOP)
+- 30 days paid vacation + public holidays
+- Annual learning budget of EUR 3,000
+- Relocation assistance for international candidates
+- BVG public transport subsidy
+- Dog-friendly office in Kreuzberg

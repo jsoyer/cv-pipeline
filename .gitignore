@@ -10,6 +10,12 @@
 *.pdf
 *.tex
 
+# Track docs assets and PDFs
+!docs/
+!docs/assets/
+!docs/assets/**
+!docs/*.pdf
+
 # Environment variables (API keys)
 .env
 

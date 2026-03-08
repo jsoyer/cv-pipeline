@@ -298,7 +298,8 @@ def print_results(company: str, domain: str, hunter: list, website: list, github
 
 
 def save_contacts(app_dir: Path, company: str, domain: str,
-                  hunter: list, website: list, github: list) -> None:
+                  hunter: list, website: list, github: list,
+                  candidate_name: str = "Candidate") -> None:
     all_contacts = hunter + website + github
     primary = _pick_primary(all_contacts)
     today = date.today().isoformat()
@@ -332,7 +333,7 @@ def save_contacts(app_dir: Path, company: str, domain: str,
             "",
             f"**Primary contact:** {primary.get('name', '')} <{primary['email']}>",
             "",
-            f"Subject: Following up on my application for [Position] — Jérôme Soyer",
+            f"Subject: Following up on my application for [Position] — {candidate_name}",
         ]
     elif not all_contacts:
         lines += ["## No contacts found", "",
@@ -396,12 +397,24 @@ def main():
     github = search_github(company)
     print(f"{'✅ ' + str(len(github)) + ' found' if github else '⚠️  none found'}")
 
+    # Load candidate name from cv.yml
+    cv_src = app_dir / "cv-tailored.yml"
+    if not cv_src.exists():
+        cv_src = REPO_ROOT / "data" / "cv.yml"
+    candidate_name = "Candidate"
+    if cv_src.exists():
+        with open(cv_src, encoding="utf-8") as f:
+            cv_data = yaml.safe_load(f) or {}
+        personal = cv_data.get("personal", {})
+        candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+
     if args.json:
         all_contacts = hunter + website + github
         print(json.dumps(all_contacts, indent=2, ensure_ascii=False))
     else:
         print_results(company, domain, hunter, website, github)
-        save_contacts(app_dir, company, domain, hunter, website, github)
+        save_contacts(app_dir, company, domain, hunter, website, github,
+                      candidate_name=candidate_name)
 
 
 if __name__ == "__main__":

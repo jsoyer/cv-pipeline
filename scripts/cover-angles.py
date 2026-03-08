@@ -68,7 +68,7 @@ You are an expert career coach and copywriter specialising in executive cover le
 for Sales Engineering and technical leadership roles.
 
 ## Applicant
-Jérôme Soyer — Regional VP of Sales Engineering, Varonis (Paris).
+{candidate_name} — {candidate_position}.
 {cv_excerpt}
 
 ## Job posting
@@ -225,6 +225,9 @@ def main():
         cv_data = yaml.safe_load(f) or {}
 
     cv_ex = _cv_excerpt(cv_data)
+    personal = cv_data.get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+    candidate_position = personal.get("position", "")
 
     print(f"📐 Generating {len(angles)} cover letter angles — {company} ({position})")
     print(f"   AI: {args.ai}\n")
@@ -237,6 +240,8 @@ def main():
         print(f"   [{label}]...", end=" ", flush=True)
 
         prompt = PROMPT_TEMPLATE.format(
+            candidate_name=candidate_name,
+            candidate_position=candidate_position,
             company=company,
             position=position,
             angle_label=label,

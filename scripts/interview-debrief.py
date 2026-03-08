@@ -41,7 +41,7 @@ You are an executive coach debriefing a senior technology sales leader after a j
 Be honest, constructive, and specific. Base your analysis on the interview notes provided.
 
 ## Candidate
-Jérôme Soyer — Regional VP Sales Engineering, Varonis, Paris.
+{candidate_name} — {candidate_position}.
 
 ## Interview Context
 **Company:** {company}
@@ -162,9 +162,25 @@ def main():
         print("❌ No notes provided — debrief requires interview notes.")
         sys.exit(1)
 
+    cv_src = app_dir / "cv-tailored.yml"
+    if not cv_src.exists():
+        cv_src = REPO_ROOT / "data" / "cv.yml"
+    candidate_name = "Candidate"
+    candidate_position = ""
+    if cv_src.exists():
+        with open(cv_src, encoding="utf-8") as f:
+            _cv = yaml.safe_load(f) or {}
+        personal = _cv.get("personal", {})
+        name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip()
+        if name:
+            candidate_name = name
+        candidate_position = personal.get("position", "")
+
     print(f"\n🔍 Generating debrief — {company} ({stage}) | AI: {args.ai}...")
 
     prompt = PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
+        candidate_position=candidate_position,
         company=company,
         position=position,
         stage=stage,

@@ -1,32 +1,40 @@
 recipient:
+  name: Hiring Manager
   company: Acme Corp
-  position: Staff Software Engineer
-  hiring_manager: Hiring Manager
-  address: "123 Tech Street, San Francisco, CA 94105"
 
-opening: >-
-  I am writing to express my strong interest in the Staff Software Engineer
-  position at Acme Corp. With 8+ years of experience building scalable
-  distributed systems and leading engineering teams, I am excited about the
-  opportunity to contribute to your mission of democratizing developer tools.
+title: Application for Staff Software Engineer
 
-body:
-  - >-
-    In my current role at TechCorp, I architected an event-driven
-    microservices platform processing 10M+ events daily with 99.95% uptime.
-    I led the cross-functional team that rebuilt the billing system,
-    eliminating **$2.4M in annual revenue leakage**. These experiences have
-    sharpened my ability to deliver high-impact technical solutions while
-    mentoring growing engineering teams.
-  - >-
-    What draws me to Acme Corp is your commitment to developer experience
-    and open-source innovation. Your recent launch of the cloud-native
-    deployment platform aligns perfectly with my expertise in CI/CD
-    optimization and infrastructure automation. I am particularly excited
-    about the opportunity to bring my experience scaling platforms from
-    startup to enterprise-grade reliability.
+opening: Dear Hiring Manager,
 
-closing: >-
+closing: Sincerely,
+
+sections:
+  - title: About Me
+    content: >-
+      I am writing to express my strong interest in the Staff Software Engineer
+      position at Acme Corp. With 8+ years of experience building scalable
+      distributed systems and leading engineering teams, I am excited about the
+      opportunity to contribute to your mission of democratizing developer tools.
+
+  - title: Why Me
+    content: >-
+      In my current role at TechCorp, I architected an event-driven
+      microservices platform processing 10M+ events daily with 99.95% uptime.
+      I led the cross-functional team that rebuilt the billing system,
+      eliminating $2.4M in annual revenue leakage. These experiences have
+      sharpened my ability to deliver high-impact technical solutions while
+      mentoring growing engineering teams.
+
+  - title: Why Acme Corp
+    content: >-
+      What draws me to Acme Corp is your commitment to developer experience
+      and open-source innovation. Your recent launch of the cloud-native
+      deployment platform aligns perfectly with my expertise in CI/CD
+      optimization and infrastructure automation. I am particularly excited
+      about the opportunity to bring my experience scaling platforms from
+      startup to enterprise-grade reliability.
+
+closing_paragraph: >-
   I would welcome the opportunity to discuss how my experience in distributed
   systems architecture and engineering leadership can contribute to Acme
   Corp's growth. Thank you for considering my application.

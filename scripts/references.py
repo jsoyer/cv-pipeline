@@ -171,6 +171,16 @@ def cmd_request(args) -> int:
     position = meta.get("position", "the position")
     today   = date.today().isoformat()
 
+    cv_src = app_dir / "cv-tailored.yml"
+    if not cv_src.exists():
+        cv_src = REPO_ROOT / "data" / "cv.yml"
+    candidate_first = "Candidate"
+    if cv_src.exists():
+        with open(cv_src, encoding="utf-8") as f:
+            _cv = yaml.safe_load(f) or {}
+        personal = _cv.get("personal", {})
+        candidate_first = personal.get("first_name", "Candidate") or "Candidate"
+
     # Select which references to use
     if args.ref:
         selected = [_find_ref(refs, args.ref)]
@@ -220,7 +230,7 @@ def cmd_request(args) -> int:
             f"way I can. Please let me know if you have any questions.",
             "",
             "Many thanks,",
-            "Jérôme",
+            candidate_first,
         ]
 
         out_lines += [
@@ -290,7 +300,7 @@ def main():
     p_add.add_argument("--company", default="", help="Company name")
     p_add.add_argument("--email", default="", help="Email address")
     p_add.add_argument("--phone", default="", help="Phone number")
-    p_add.add_argument("--relationship", default="", help="e.g. 'Former manager at Varonis'")
+    p_add.add_argument("--relationship", default="", help="e.g. 'Former manager at TechCorp'")
     p_add.add_argument("--notes", default="", help="Private notes")
 
     # show

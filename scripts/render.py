@@ -386,7 +386,9 @@ def build_preamble(
 \\SetWatermarkColor[gray]{0.92}
 """
     metadata_block = ""
+    name = ""
     if personal:
+        name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip()
         keywords = ""
         if "skills" in personal:
             skill_keywords = []
@@ -396,7 +398,6 @@ def build_preamble(
                 )
             keywords = ", ".join(skill_keywords[:15])
         position = personal.get("position", "")
-        name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}"
         metadata_block = f"""\
 % PDF metadata
 \\hypersetup{{
@@ -410,7 +411,7 @@ def build_preamble(
     return f"""\
 %!TEX TS-program = xelatex
 %!TEX encoding = UTF-8 Unicode
-% Jerome Soyer - {comment}
+% {name} - {comment}
 % Auto-generated from data/ by scripts/render.py
 % Using Awesome-CV template by posquit0
 % https://github.com/posquit0/Awesome-CV
@@ -436,12 +437,18 @@ def build_preamble(
 """
 
 
-FOOTER = """\
-\\makecvfooter
-  {\\today}
-  {Jerome Soyer~~~·~~~Résumé}
-  {\\thepage}
-"""
+def _build_footer(personal: dict | None = None) -> str:
+    """Build CV footer with dynamic name from personal data."""
+    if personal:
+        name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip()
+    else:
+        name = ""
+    return (
+        "\\makecvfooter\n"
+        "  {\\today}\n"
+        f"  {{{name}~~~·~~~Résumé}}\n"
+        "  {\\thepage}\n"
+    )
 
 
 def render_cv(data, theme=None, pdfa=False, draft=False):
@@ -475,7 +482,7 @@ def render_cv(data, theme=None, pdfa=False, draft=False):
     sections.append("\\makecvheader[C]")
     sections.append("")
     sections.append("% Print the footer with 3 arguments(<left>, <center>, <right>)")
-    sections.append(FOOTER)
+    sections.append(_build_footer(data.get("personal")))
     sections.append("")
 
     # Profile

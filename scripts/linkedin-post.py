@@ -54,9 +54,8 @@ You are a personal branding specialist writing a LinkedIn post for a senior tech
 sales leader. Write in a direct, human, first-person voice — not corporate, not humble-braggy.
 
 ## Author
-Jérôme Soyer — Regional VP of Sales Engineering at Varonis, Paris.
-15+ years in technology sales, SE leadership, cybersecurity/data/SaaS.
-Scaled SE organisations to 50+ HC. Drives ARR growth. French native, fluent English.
+{candidate_name} — {candidate_position}.
+{candidate_profile}
 
 ## Post Type
 {post_type_label}
@@ -158,9 +157,14 @@ def main():
         with open(cv_src, encoding="utf-8") as f:
             cv_data = yaml.safe_load(f) or {}
 
+    personal = cv_data.get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+    candidate_position = personal.get("position", "")
+
     profile = cv_data.get("profile", "")
     profile_excerpt = re.sub(r"\*\*(.+?)\*\*", r"\1",
                               profile if isinstance(profile, str) else "")[:500]
+    candidate_profile = profile_excerpt
 
     wins = cv_data.get("key_wins", [])
     ach_lines = []
@@ -182,6 +186,9 @@ def main():
     print(f"   AI: {args.ai}...")
 
     prompt = PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
+        candidate_position=candidate_position,
+        candidate_profile=candidate_profile,
         post_type_label=type_label,
         topic_section=topic_section,
         profile_excerpt=profile_excerpt,

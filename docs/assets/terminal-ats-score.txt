@@ -1,0 +1,65 @@
+$ make score NAME=2026-02-anthropic
+
+  ATS Keyword Score
+  =================
+
+  Job:       Senior Software Engineer - Developer Tools
+  Company:   Anthropic
+  Source:    applications/2026-02-anthropic/job.txt
+
+  Overall Score: 78% (62/79 keywords matched)
+
+  Section Scores
+  --------------
+  Technical Skills     92%  (23/25)
+  Experience Keywords  74%  (20/27)
+  Soft Skills          82%  (9/11)
+  Tools & Platforms    63%  (10/16)
+
+  Matched Keywords (62)
+  ---------------------
+  [Technical Skills]
+    Python, TypeScript, Rust, Go, CI/CD, REST API, GraphQL,
+    microservices, distributed systems, cloud infrastructure,
+    containerization, Docker, Kubernetes, IaC, Terraform,
+    monitoring, observability, Linux, networking, security,
+    performance optimization, API design, system design
+
+  [Experience Keywords]
+    team leadership, cross-functional collaboration, agile,
+    mentoring, code review, architecture decisions, incident
+    response, on-call, SLA, production systems, scaling,
+    technical documentation, developer experience, SDK,
+    CLI tooling, open source, stakeholder management,
+    project planning, release management, testing strategy
+
+  [Soft Skills]
+    communication, problem-solving, ownership, autonomy,
+    collaboration, adaptability, attention to detail,
+    continuous learning, initiative
+
+  [Tools & Platforms]
+    GitHub, AWS, GCP, Linux, PostgreSQL, Redis,
+    Datadog, Grafana, Sentry, Jira
+
+  Missing Keywords (17)
+  ---------------------
+  [Technical Skills]
+    WebAssembly, ONNX
+
+  [Experience Keywords]
+    ML pipeline, model deployment, A/B testing, feature flags,
+    data pipeline, ETL, compliance (SOC2)
+
+  [Tools & Platforms]
+    Anthropic API, Claude SDK, Vertex AI, BigQuery,
+    Pub/Sub, Spanner
+
+  Recommendations
+  ---------------
+  1. Add ML/AI deployment experience if applicable
+  2. Mention A/B testing or feature flag experience in past roles
+  3. Reference specific cloud data services (BigQuery, Pub/Sub)
+  4. Consider adding compliance/audit experience (SOC2, GDPR)
+
+  Tip: Run `make tailor NAME=2026-02-anthropic` to auto-optimize

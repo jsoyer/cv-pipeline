@@ -34,7 +34,7 @@ except ImportError:
     sys.exit(1)
 
 from lib.ai import call_ai, KEY_ENV, VALID_PROVIDERS
-from lib.common import load_env
+from lib.common import load_env, REPO_ROOT
 
 EMAIL_TYPE_LABEL = {
     "cold":       "Cold Outreach",
@@ -64,9 +64,8 @@ direct tone — no buzzwords, no templates, no fluff.
 
 ## Context
 
-**Applicant:** Jérôme Soyer — Regional VP of Sales Engineering at Varonis, Paris.
-Expert in scaling SE organisations (50+ HC), driving ARR growth, M&A technical \
-integration, cybersecurity/data/SaaS domain. French native, fluent English.
+**Applicant:** {candidate_name} — {candidate_position}.
+{candidate_profile}
 
 **Target company:** {company}
 **Role applied for:** {position}
@@ -86,7 +85,7 @@ Write a professional outreach email for a **{email_type_label}** scenario:
 - Opening: reference the specific role or company immediately
 - Middle: one concrete achievement with numbers; one reason this company specifically
 - Closing: clear single call-to-action (15-min call, coffee chat, reply to confirm)
-- Sign-off: "Best regards,\\nJérôme Soyer"
+- Sign-off: "Best regards,\\n{candidate_name}"
 - No emojis. No generic openers ("I hope this email finds you well").
 
 ## Output format
@@ -102,15 +101,25 @@ Return ONLY the email in this exact format — no intro, no commentary:
 
 
 def build_prompt(meta: dict, email_type: str, contact_name: str,
-                 job_text: str, research_text: str) -> str:
+                 job_text: str, research_text: str,
+                 cv_data: dict | None = None) -> str:
     company  = meta.get("company", "the company")
     position = meta.get("position", "the role")
+
+    personal = (cv_data or {}).get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+    candidate_position = personal.get("position", "")
+    profile = (cv_data or {}).get("profile", "")
+    candidate_profile = profile[:300] if profile else ""
 
     contact_section = ""
     if contact_name:
         contact_section = f"**Contact name:** {contact_name}\n"
 
     return PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
+        candidate_position=candidate_position,
+        candidate_profile=candidate_profile,
         company=company,
         position=position,
         email_type_label=EMAIL_TYPE_LABEL.get(email_type, email_type),
@@ -209,6 +218,14 @@ def main():
     company  = meta.get("company", app_dir.name)
     position = meta.get("position", "")
 
+    cv_src = app_dir / "cv-tailored.yml"
+    if not cv_src.exists():
+        cv_src = REPO_ROOT / "data" / "cv.yml"
+    cv_data = {}
+    if cv_src.exists():
+        with open(cv_src, encoding="utf-8") as f:
+            cv_data = yaml.safe_load(f) or {}
+
     job_text      = _read_file(app_dir / "job.txt")
     research_text = _read_file(app_dir / "company-research.md")
 
@@ -228,7 +245,8 @@ def main():
     print(f"   AI: {args.ai}...")
     print()
 
-    prompt     = build_prompt(meta, args.email_type, contact_name, job_text, research_text)
+    prompt     = build_prompt(meta, args.email_type, contact_name, job_text, research_text,
+                             cv_data=cv_data)
     raw_output = call_ai(prompt, args.ai, api_key, temperature=0.5, max_tokens=2048)
 
     out_path = save_output(app_dir, meta, args.email_type, contact_name, raw_output, args.ai)

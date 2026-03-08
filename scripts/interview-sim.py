@@ -82,7 +82,7 @@ def _read(path: Path, max_chars: int = 1500) -> str:
 
 QUESTIONS_PROMPT = """\
 You are preparing a senior hiring panel interview for {position} at {company}.
-The candidate is Jérôme Soyer, VP of Sales Engineering with 15+ years in cybersecurity/SaaS.
+The candidate is {candidate_name}.
 
 Job Description:
 {job_excerpt}
@@ -99,7 +99,7 @@ You are a senior hiring panel evaluator assessing a candidate's interview perfor
 Be honest, specific, and constructive. Rate objectively — do not over-encourage.
 
 ## Candidate
-Jérôme Soyer — applying for {position} at {company}.
+{candidate_name} — applying for {position} at {company}.
 
 ## Interview Type
 {type_label}
@@ -202,6 +202,17 @@ def main():
 
     company  = meta.get("company", app_dir.name)
     position = meta.get("position", "the role")
+
+    cv_src = app_dir / "cv-tailored.yml"
+    if not cv_src.exists():
+        cv_src = REPO_ROOT / "data" / "cv.yml"
+    cv_data = {}
+    if cv_src.exists():
+        with open(cv_src, encoding="utf-8") as f:
+            cv_data = yaml.safe_load(f) or {}
+    personal = cv_data.get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+
     job_excerpt = _read(app_dir / "job.txt", 1500) or "(no job.txt)"
 
     type_label = TYPE_LABEL[args.interview_type]
@@ -216,6 +227,7 @@ def main():
 
     # Phase 1: Generate questions
     q_prompt = QUESTIONS_PROMPT.format(
+        candidate_name=candidate_name,
         company=company,
         position=position,
         job_excerpt=job_excerpt,
@@ -281,6 +293,7 @@ def main():
     transcript = "\n---\n".join(transcript_lines)
 
     eval_prompt = EVALUATION_PROMPT.format(
+        candidate_name=candidate_name,
         company=company,
         position=position,
         type_label=type_label,

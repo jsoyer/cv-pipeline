@@ -9,6 +9,19 @@
 [![Awesome-CV](https://img.shields.io/badge/template-Awesome--CV-red)](https://github.com/posquit0/Awesome-CV)
 [![AI Providers](https://img.shields.io/badge/AI-5%20providers-blueviolet)](#-ai-providers)
 
+### Sample Output (Awesome-CV)
+
+<p align="center">
+  <a href="docs/sample-cv.pdf">
+    <img src="https://github.com/jsoyer/cv-pipeline/blob/main/docs/assets/social-preview.svg" alt="CV Pipeline" width="600"/>
+  </a>
+</p>
+
+<p align="center">
+  <a href="docs/sample-cv.pdf"><strong>View Sample CV (PDF)</strong></a> &nbsp;|&nbsp;
+  <a href="docs/sample-coverletter.pdf"><strong>View Sample Cover Letter (PDF)</strong></a>
+</p>
+
 ---
 
 ## Why This Exists

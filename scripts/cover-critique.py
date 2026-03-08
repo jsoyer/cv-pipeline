@@ -64,7 +64,7 @@ VP-level technology sales role. Be honest, specific, and constructive. \
 Do not be encouraging for its own sake — flag real weaknesses.
 
 ## Candidate
-Jérôme Soyer — applying for {position} at {company}.
+{candidate_name} — applying for {position} at {company}.
 
 ## Cover Letter Text
 {cover_text}
@@ -170,6 +170,18 @@ def main():
     company  = meta.get("company", app_dir.name)
     position = meta.get("position", "the role")
 
+    cv_src = app_dir / "cv-tailored.yml"
+    if not cv_src.exists():
+        cv_src = REPO_ROOT / "data" / "cv.yml"
+    candidate_name = "Candidate"
+    if cv_src.exists():
+        with open(cv_src, encoding="utf-8") as f:
+            cv_data = yaml.safe_load(f) or {}
+        personal = cv_data.get("personal", {})
+        name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip()
+        if name:
+            candidate_name = name
+
     job_path = app_dir / "job.txt"
     job_excerpt = job_path.read_text(encoding="utf-8")[:2000] if job_path.exists() else "(no job.txt)"
 
@@ -177,6 +189,7 @@ def main():
     print(f"   AI: {args.ai}...")
 
     prompt = PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
         company=company,
         position=position,
         cover_text=cover_text[:3000],

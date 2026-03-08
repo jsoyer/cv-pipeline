@@ -110,7 +110,22 @@ def _is_stale(app_dir: Path, meta: dict, days_threshold: int) -> tuple:
 # Template generation
 # ---------------------------------------------------------------------------
 
+def _load_candidate_name(app_dir: Path) -> str:
+    cv_src = app_dir / "cv-tailored.yml"
+    if not cv_src.exists():
+        cv_src = REPO_ROOT / "data" / "cv.yml"
+    if cv_src.exists():
+        with open(cv_src, encoding="utf-8") as f:
+            cv_data = yaml.safe_load(f) or {}
+        personal = cv_data.get("personal", {})
+        name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip()
+        if name:
+            return name
+    return "Candidate"
+
+
 def _generate_template(app_dir: Path, meta: dict, days_elapsed: int, applied_date: datetime) -> str:
+    candidate_name = _load_candidate_name(app_dir)
     company  = meta.get("company",  app_dir.name)
     position = meta.get("position", "the position")
     outcome  = meta.get("outcome",  "")
@@ -141,13 +156,14 @@ at your convenience.
 Thank you for your time and consideration.
 
 Best regards,
-Jérôme Soyer
+{candidate_name}
 ```
 
 """
 
 
 def _generate_single(app_dir: Path) -> str:
+    candidate_name = _load_candidate_name(app_dir)
     meta = load_meta(app_dir)
     company  = meta.get("company",  app_dir.name)
     position = meta.get("position", "the position")
@@ -180,7 +196,7 @@ at your convenience.
 Thank you for your time and consideration.
 
 Best regards,
-Jérôme Soyer
+{candidate_name}
 ```
 
 ## Tips

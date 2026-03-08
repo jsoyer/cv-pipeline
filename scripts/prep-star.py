@@ -69,9 +69,8 @@ Turn the CV achievements below into structured STAR stories, each mapped to a sp
 behavioral question.
 
 ## Candidate
-Jérôme Soyer — Regional VP of Sales Engineering at Varonis, Paris.
-Expert in scaling SE organisations (50+ HC), driving ARR growth, M&A integration, \
-cybersecurity/data/SaaS.
+{candidate_name} — {candidate_position}.
+{candidate_profile}
 
 ## CV Achievements
 {achievements}
@@ -153,6 +152,12 @@ def main():
     with open(cv_src, encoding="utf-8") as f:
         cv_data = yaml.safe_load(f) or {}
 
+    personal = cv_data.get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+    candidate_position = personal.get("position", "")
+    profile = cv_data.get("profile", "")
+    candidate_profile = re.sub(r"\*\*(.+?)\*\*", r"\1", str(profile))[:300] if profile else ""
+
     achievements = extract_achievements(cv_data)
 
     job_txt = app_dir / "job.txt"
@@ -165,6 +170,9 @@ def main():
     print(f"   Position: {position} | AI: {args.ai}...")
 
     prompt = PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
+        candidate_position=candidate_position,
+        candidate_profile=candidate_profile,
         achievements=achievements,
         job_excerpt=job_excerpt,
         count=args.count,

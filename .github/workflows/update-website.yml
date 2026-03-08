@@ -30,10 +30,10 @@ jobs:
       - name: Parse CV.tex
         run: python parse_cv.py CV.tex
 
-      - name: Checkout cv.jeromesoyer.fr repository
+      - name: Checkout website repository
         uses: actions/checkout@v4
         with:
-          repository: jsoyer/cv.jeromesoyer.fr
+          repository: ${{ vars.WEBSITE_REPO || 'your-username/your-cv-website' }}
           path: cv-website
           token: ${{ secrets.PAT_TOKEN }}
 

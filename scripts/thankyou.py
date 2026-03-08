@@ -28,7 +28,7 @@ except ImportError:
     sys.exit(1)
 
 from lib.ai import call_ai, KEY_ENV, VALID_PROVIDERS
-from lib.common import load_env, load_meta
+from lib.common import load_env, load_meta, REPO_ROOT
 
 
 def load_text(path, max_chars=None):
@@ -70,6 +70,18 @@ def build_prompt(app_dir, stage):
     position  = meta.get("position",  "the position")
     recipient = meta.get("recipient", "")
 
+    cv_src = os.path.join(app_dir, "cv-tailored.yml")
+    if not os.path.exists(cv_src):
+        cv_src = os.path.join(REPO_ROOT, "data", "cv.yml")
+    candidate_name = "Candidate"
+    if os.path.exists(cv_src):
+        with open(cv_src, encoding="utf-8") as f:
+            cv_data = yaml.safe_load(f) or {}
+        personal = cv_data.get("personal", {})
+        name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip()
+        if name:
+            candidate_name = name
+
     job_text  = load_text(os.path.join(app_dir, "job.txt"), max_chars=300)
     key_wins  = extract_top_key_wins(os.path.join(app_dir, "cv-tailored.yml"), n=3)
     prep_text = load_text(os.path.join(app_dir, "prep.md"), max_chars=600)
@@ -108,7 +120,7 @@ Write a professional, personalized thank-you email. Requirements:
 - End with a clear next step
 - Warm but professional tone
 - No placeholder brackets — write as if sending today
-- Sign off as: Jérôme Soyer
+- Sign off as: {candidate_name}
 
 Output ONLY:
 Subject: [subject line]

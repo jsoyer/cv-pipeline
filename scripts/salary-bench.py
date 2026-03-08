@@ -60,11 +60,10 @@ You are a compensation expert and career strategist specialising in senior techn
 sales leadership roles in France and Europe.
 
 ## Candidate Profile
-- **Name:** Jérôme Soyer
-- **Current role:** Regional VP of Sales Engineering, Varonis, Paris
-- **Experience:** 15+ years in technology sales, SE leadership, cybersecurity/SaaS/data
-- **Team management:** 50+ headcount SE organisations
-- **Location:** Paris, France
+- **Name:** {candidate_name}
+- **Current role:** {candidate_position}
+- **Location:** {candidate_location}
+{candidate_profile}
 
 ## Target Role
 - **Company:** {company}
@@ -104,7 +103,7 @@ List the components beyond base salary that are typical for this role/company ty
 - Notice period / garden leave implications
 
 ## Leverage Points
-What strengthens Jérôme's negotiating position specifically for this role? List 4-5 concrete points.
+What strengthens the candidate's negotiating position specifically for this role? List 4-5 concrete points.
 
 ## Negotiation Strategy
 Step-by-step approach:
@@ -144,10 +143,18 @@ def _extract_location(job_text: str) -> str:
     return "France / Europe (assumed)"
 
 
-def build_prompt(meta: dict, prefs: dict, job_text: str, research_text: str) -> str:
+def build_prompt(meta: dict, prefs: dict, job_text: str, research_text: str,
+                 cv_data: dict | None = None) -> str:
     company  = meta.get("company", "the company")
     position = meta.get("position", "the role")
     location = _extract_location(job_text)
+
+    personal = (cv_data or {}).get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+    candidate_position = personal.get("position", "")
+    candidate_location = personal.get("address", "")
+    profile = (cv_data or {}).get("profile", "")
+    candidate_profile = f"- **Profile:** {profile[:300]}" if profile else ""
 
     salary_section = ""
     sal = prefs.get("salary", {})
@@ -158,6 +165,10 @@ def build_prompt(meta: dict, prefs: dict, job_text: str, research_text: str) -> 
         )
 
     return PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
+        candidate_position=candidate_position,
+        candidate_location=candidate_location,
+        candidate_profile=candidate_profile,
         company=company,
         position=position,
         job_location=location,
@@ -237,6 +248,14 @@ def main():
     position = meta.get("position", "")
     prefs    = _load_preferences()
 
+    cv_src = app_dir / "cv-tailored.yml"
+    if not cv_src.exists():
+        cv_src = REPO_ROOT / "data" / "cv.yml"
+    cv_data = {}
+    if cv_src.exists():
+        with open(cv_src, encoding="utf-8") as f:
+            cv_data = yaml.safe_load(f) or {}
+
     job_text      = _read_file(app_dir / "job.txt")
     research_text = _read_file(app_dir / "company-research.md")
 
@@ -245,7 +264,7 @@ def main():
     print(f"   AI: {args.ai}...")
     print()
 
-    prompt     = build_prompt(meta, prefs, job_text, research_text)
+    prompt     = build_prompt(meta, prefs, job_text, research_text, cv_data=cv_data)
     raw_output = call_ai(prompt, args.ai, api_key)
 
     out_path = save_output(app_dir, meta, raw_output, args.ai)

@@ -25,7 +25,7 @@ except ImportError:
     sys.exit(1)
 
 from lib.ai import call_ai, KEY_ENV, VALID_PROVIDERS
-from lib.common import load_env, load_meta
+from lib.common import load_env, load_meta, REPO_ROOT
 
 
 # ---------------------------------------------------------------------------
@@ -71,6 +71,18 @@ def build_prompt(app_dir, offer_amount):
     position = meta.get("position", "the position")
     notes    = meta.get("notes", "")
 
+    cv_src = os.path.join(app_dir, "cv-tailored.yml")
+    if not os.path.exists(cv_src):
+        cv_src = os.path.join(REPO_ROOT, "data", "cv.yml")
+    candidate_name = "Candidate"
+    if os.path.exists(cv_src):
+        with open(cv_src, encoding="utf-8") as f:
+            _cv = yaml.safe_load(f) or {}
+        personal = _cv.get("personal", {})
+        name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip()
+        if name:
+            candidate_name = name
+
     # Extract offer from notes if not passed explicitly
     if not offer_amount and notes:
         offer_amount = notes
@@ -106,7 +118,7 @@ Professional email to respond to the offer. Requirements:
 - Briefly anchor with market data or unique value
 - Make a specific counter-proposal (if offer provided, suggest 15-20% higher base)
 - Keep a collaborative, not adversarial tone
-- Sign off as: Jérôme Soyer
+- Sign off as: {candidate_name}
 
 ## 2. Negotiation Call Talking Points
 5-7 bullet points for a live negotiation conversation:

@@ -86,7 +86,7 @@ Be specific: reference exact phrases from the job description that map poorly to
 Every point must be actionable — tell the candidate what to say or do, not just what's wrong.
 
 ## Candidate
-Jérôme Soyer — {position} applicant at {company}.
+{candidate_name} — {position} applicant at {company}.
 Current stage: {stage}
 
 ## CV Highlights
@@ -208,7 +208,11 @@ def main():
     print(f"🔍 Analysing blind spots — {company} ({position})")
     print(f"   Stage: {stage} | AI: {args.ai}...")
 
+    personal = cv_data.get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+
     prompt = PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
         company=company,
         position=position,
         stage=stage,

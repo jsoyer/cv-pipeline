@@ -46,10 +46,8 @@ You are an executive coach writing elevator pitches for a senior technology sale
 Write in first person, direct and confident — no "I'm passionate about", no "leveraging", no buzzwords.
 
 ## About
-Jérôme Soyer — Regional VP of Sales Engineering at Varonis, Paris.
-15+ years in technology sales and SE leadership. Scaled SE teams to 50+ people.
-Expert in cybersecurity, data security, SaaS enterprise sales. Drives ARR growth.
-French native, fluent English. Based in Paris.
+{candidate_name} — {candidate_position}.
+{candidate_profile}
 
 ## CV Profile
 {profile}
@@ -133,7 +131,12 @@ def main():
         with open(cv_src, encoding="utf-8") as f:
             cv_data = yaml.safe_load(f) or {}
 
+    personal = cv_data.get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+    candidate_position = personal.get("position", "")
+
     profile = _strip_bold(cv_data.get("profile", ""))[:600]
+    candidate_profile = profile
 
     wins = cv_data.get("key_wins", [])
     ach_lines = []
@@ -158,6 +161,9 @@ def main():
     print(f"   AI: {args.ai}...")
 
     prompt = PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
+        candidate_position=candidate_position,
+        candidate_profile=candidate_profile,
         profile=profile,
         achievements=achievements,
         context_label=context_label,

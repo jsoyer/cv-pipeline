@@ -48,8 +48,7 @@ prepare for interviews and sales conversations.
 
 **Target company:** {company}
 **Role applied for:** {position}
-**Candidate:** Jérôme Soyer — Regional VP of Sales Engineering at Varonis. \
-Expert in cybersecurity, data security, SaaS, SE team leadership.
+**Candidate:** {candidate_name} — {candidate_position}.
 
 **Job posting excerpt:**
 {job_excerpt}
@@ -77,7 +76,7 @@ Reference products, culture, growth trajectory, mission, or market dynamics. \
 Be concrete — no generic "innovative culture" statements.
 
 ## Interview Talking Points
-3 bullet points Jérôme can use to demonstrate he understands {company}'s competitive \
+3 bullet points the candidate can use to demonstrate they understand {company}'s competitive \
 position and has done his homework. Each should start with a specific fact or observation.
 
 ## Mermaid Diagram
@@ -95,11 +94,18 @@ note if information may be outdated.
 """
 
 
-def build_prompt(meta: dict, job_text: str, research_text: str) -> str:
+def build_prompt(meta: dict, job_text: str, research_text: str,
+                 cv_data: dict | None = None) -> str:
     company  = meta.get("company", "the company")
     position = meta.get("position", "the role")
 
+    personal = (cv_data or {}).get("personal", {})
+    candidate_name = f"{personal.get('first_name', '')} {personal.get('last_name', '')}".strip() or "Candidate"
+    candidate_position = personal.get("position", "")
+
     return PROMPT_TEMPLATE.format(
+        candidate_name=candidate_name,
+        candidate_position=candidate_position,
         company=company,
         position=position,
         job_excerpt=job_text[:2000] if job_text else "(no job.txt available)",
@@ -175,6 +181,14 @@ def main():
     company  = meta.get("company", app_dir.name)
     position = meta.get("position", "")
 
+    cv_src = app_dir / "cv-tailored.yml"
+    if not cv_src.exists():
+        cv_src = REPO_ROOT / "data" / "cv.yml"
+    cv_data = {}
+    if cv_src.exists():
+        with open(cv_src, encoding="utf-8") as f:
+            cv_data = yaml.safe_load(f) or {}
+
     job_text      = _read_file(app_dir / "job.txt")
     research_text = _read_file(app_dir / "company-research.md")
 
@@ -183,7 +197,7 @@ def main():
     print(f"   AI: {args.ai}...")
     print()
 
-    prompt     = build_prompt(meta, job_text, research_text)
+    prompt     = build_prompt(meta, job_text, research_text, cv_data=cv_data)
     raw_output = call_ai(prompt, args.ai, api_key)
 
     out_path = save_output(app_dir, meta, raw_output, args.ai)
