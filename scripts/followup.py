@@ -16,6 +16,8 @@ With --name: generates a single follow-up for the specified application,
   saves to applications/NAME/followup.md
 """
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
@@ -28,25 +30,9 @@ except ImportError:
     print("❌ PyYAML required: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import load_meta, REPO_ROOT
 
 TERMINAL_OUTCOMES = {"offer", "rejected", "ghosted"}
-
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-def load_meta(app_dir: Path) -> dict:
-    meta_path = app_dir / "meta.yml"
-    if not meta_path.exists():
-        return {}
-    try:
-        with open(meta_path, encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
-        return {}
 
 
 def _pr_merged_date(app_name: str):
@@ -61,7 +47,7 @@ def _pr_merged_date(app_name: str):
              "--state", "merged",
              "--json", "mergedAt",
              "--jq", ".[0].mergedAt"],
-            capture_output=True, text=True, timeout=15, cwd=_REPO_ROOT,
+            capture_output=True, text=True, timeout=15, cwd=REPO_ROOT,
         )
         merged_at = result.stdout.strip()
         if merged_at and merged_at != "null":
@@ -228,7 +214,7 @@ def main():
 
     # ── Single application mode ────────────────────────────────────────────────
     if args.name:
-        app_dir = _REPO_ROOT / "applications" / args.name
+        app_dir = REPO_ROOT / "applications" / args.name
         if not app_dir.is_dir():
             print(f"❌ Directory not found: {app_dir}")
             sys.exit(1)
@@ -243,7 +229,7 @@ def main():
         return 0
 
     # ── Bulk scan mode ─────────────────────────────────────────────────────────
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         print("❌ No applications/ directory found")
         sys.exit(1)
@@ -283,7 +269,7 @@ def main():
     print()
     content = "\n".join(sections)
 
-    out_path = _REPO_ROOT / "followup-templates.md"
+    out_path = REPO_ROOT / "followup-templates.md"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(content)
 

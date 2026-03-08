@@ -7,6 +7,7 @@ Usage:
     scripts/changelog.py --markdown     # markdown output
 """
 
+import argparse
 import re
 import subprocess
 import sys
@@ -62,7 +63,18 @@ def detect_sections_changed(diff):
 
 
 def main():
-    markdown = "--markdown" in sys.argv
+    parser = argparse.ArgumentParser(
+        prog="changelog.py",
+        description="Generate a changelog of CV modifications across applications.",
+    )
+    parser.add_argument(
+        "--markdown",
+        action="store_true",
+        help="Output as Markdown instead of terminal-formatted text",
+    )
+    args = parser.parse_args()
+
+    markdown = args.markdown
 
     apps_dir = Path("applications")
     if not apps_dir.exists():

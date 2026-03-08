@@ -23,14 +23,9 @@ import textwrap
 from datetime import date
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    print("❌ PyYAML required: pip install pyyaml")
-    sys.exit(1)
+from lib.common import REPO_ROOT, require_yaml
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+yaml = require_yaml()
 
 DIVIDER = "─" * 77
 
@@ -348,14 +343,14 @@ def main():
 
         cv_data_path = app_dir / "cv-tailored.yml"
         if not cv_data_path.exists():
-            cv_data_path = _REPO_ROOT / "data" / "cv.yml"
+            cv_data_path = REPO_ROOT / "data" / "cv.yml"
             print(f"ℹ️  No cv-tailored.yml found — using {cv_data_path}")
 
         cv_out_path = Path(args.output) if args.output else app_dir / "CV.txt"
     else:
         app_dir      = None
-        cv_data_path = _REPO_ROOT / "data" / "cv.yml"
-        cv_out_path  = Path(args.output) if args.output else _REPO_ROOT / "CV.txt"
+        cv_data_path = REPO_ROOT / "data" / "cv.yml"
+        cv_out_path  = Path(args.output) if args.output else REPO_ROOT / "CV.txt"
 
     # Load and render CV
     if not cv_data_path.exists():

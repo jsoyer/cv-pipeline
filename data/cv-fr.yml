@@ -1,171 +1,63 @@
 personal:
-  first_name: Jerome
-  last_name: Soyer
-  position: RVP of Sales Engineering
-  address: Paris, France
-  mobile: "(+33) 07 78 11 02 94"
-  email: jeromesoyer@gmail.com
-  linkedin: jeromesoyer
+  first_name: Jane
+  last_name: Doe
+  position: Ingenieure Logiciel Senior
+  address: San Francisco, CA
+  mobile: "(+1) 555-012-3456"
+  email: jane.doe@example.com
+  linkedin: janedoe
+  github: janedoe
 
 profile: >-
-  Leader technologique stratégique avec plus de 10 ans d'expérience au rapport
-  de VP Globaux. Expert dans le développement d'organisations régionales
-  d'Architecture Solutions à haute performance (50+ HC) et dans l'accélération
-  de la croissance en environnements SaaS basés sur la consommation. Impact
-  démontré dans la croissance de l'ARR France de 55%+ et le management d'équipes
-  à travers des M&A stratégiques. Actuellement focalisé sur la construction et
-  l'accélération de territoires régionaux dans l'espace Data / CyberSécurité.
+  Ingenieure full-stack avec 8+ ans d'experience dans le developpement
+  d'applications web scalables et de systemes distribues. Passionnee par
+  le code propre, l'outillage developpeur et le mentorat. A dirige la
+  migration d'une architecture monolithique vers des microservices,
+  reduisant les temps de deploiement de 70%.
 
 skills:
-  - category: Leadership Exécutif
-    items: Management de Managers (50+ HC), Intégration Technique M&A, Conduite du Changement, Acquisition Stratégique de Talents, Culture de Haute Performance
-  - category: Ingénierie Avant-Vente
-    items: MEDDPICC, Vente par la Valeur, Stratégie PoV, Optimisation des Victoires Techniques, GTM SaaS Enterprise
-  - category: Croissance Revenue
-    items: Stratégie Pipeline Upsell, Expansion Basée sur la Consommation, Frameworks Land & Expand
-  - category: Data & Intelligence IA
-    items: AI TRiSM, DSPM, Gouvernance des Données, Conformité des Données, Détection des Menaces Internes, Sécurité Email IA, DAM
-  - category: Excellence Opérationnelle
-    items: Croissance ARR, Convergence Post-Vente (TAM/CS), Croissance NRR, Enablement & Playbooks, Engagement C-Level
-
-key_wins:
-  - title: Leaders Bancaires Mondiaux (RFP 7 chiffres)
-    text: >-
-      Orchestré la stratégie technique pour deux des plus grands groupes bancaires
-      européens. Sécurisé des contrats SaaS multi-annuels alignés avec les standards
-      réglementaires de la BCE.
-  - title: Ministère National (POV stratégique 7 chiffres)
-    text: >-
-      Dirigé un POV à enjeux élevés sécurisant un accord-cadre national massif
-      dans un environnement gouvernemental sensible.
-  - title: Marché Enterprise (Déplacements de 6 chiffres)
-    text: >-
-      Accéléré les parts de marché (Luxe, Retail, Télécom) en déplaçant les
-      incumbents avec un framework POV basé sur la valeur.
-  - title: Expansion Stratégique (Victoires de 6 chiffres élevés)
-    text: >-
-      Conclu des deals stratégiques Tier-1 en industrialisant le Pipeline Upsell,
-      maximisant la valeur vie client.
+  - category: Langages
+    items: Python, TypeScript, Go, Rust, SQL
+  - category: Frameworks
+    items: React, Next.js, FastAPI, Django, Express
+  - category: Infrastructure
+    items: AWS, Docker, Kubernetes, Terraform, GitHub Actions
+  - category: Donnees
+    items: PostgreSQL, Redis, Elasticsearch, Kafka, DynamoDB
 
 experience:
-  - title: Regional VP of Sales Engineering
-    company: Varonis
-    location: Paris, France
-    dates: Jan. 2022 -- Présent
-    items:
-      - label: Management Exécutif
-        text: Direction de **50+ HC** à travers l'Europe Continentale (1 Directeur, 8 Managers).
-      - label: Transformation Organisationnelle
-        text: Orchestré le pivot du modèle Perpétuel vers **100% SaaS/Consommation**.
-      - label: M&A & Innovation
-        text: Pilotage de l'intégration technique terrain des acquisitions (ALLTrue.ai, SlashNext, Cyral) pour une plateforme unifiée d'Intelligence Data alimentée par l'IA.
-      - label: Performance
-        text: Délivrance constante de **20%+ de croissance ARR YoY** sur le marché français (**70%+ du territoire ARR**).
-      - label: Stratégie de Victoire
-        text: Partenariat sur des **deals Enterprise à 7 chiffres** utilisant MEDDPICC et Challenger Sales.
-      - label: Excellence RFP
-        text: Standardisation du processus RFP améliorant les taux de victoire ; orchestration d'équipes transverses (Juridique, Produit, Sécurité).
-      - label: Gestion de Portefeuille
-        text: Supervision de la stratégie technique pour un portefeuille régional de **$100M+ ARR**.
-      - label: Succès Client
-        text: Création de la division CS/TAM France (4 Managers, 4 CSOMs, 10+ TAMs) focalisée sur les métriques de consommation et le NRR.
-      - label: Développement des Talents
-        text: Programme proactif de recrutement/mentorat résultant en de multiples promotions au management.
+  - company: TechCorp Inc.
+    position: Ingenieure Logiciel Senior
+    dates: 2022 -- Present
+    location: San Francisco, CA
+    bullets:
+      - >-
+        Conception et deploiement de **microservices event-driven** traitant
+        10M+ evenements/jour sur AWS ECS avec Kafka, 99.95% de disponibilite
+      - >-
+        Direction d'une equipe de 6 ingenieurs pour reconstruire le systeme
+        de facturation, reduisant les pertes de revenus de **2.4M$/an**
 
-  - title: Director of Sales Engineering
-    company: Varonis
-    location: Paris, France
-    dates: Sep. 2018 -- Déc. 2021
-    items:
-      - text: Développement de l'organisation technique terrain à travers la **France, les Pays-Bas, l'Italie, le Portugal et l'Espagne**.
-      - text: Partenariat avec les VP Sales pour définir les stratégies territoriales et sécuriser des **deals Enterprise**.
-      - label: Gestion des Appels d'Offres
-        text: Direction de la réponse technique pour les appels d'offres majeurs, 100% conformité, victoire constante face aux incumbents.
-
-  - title: Manager of Sales Engineering
-    company: Varonis
-    location: Paris, France
-    dates: Jul. 2016 -- Août 2018
-    items:
-      - label: Construction d'Équipe
-        text: Recrutement de l'équipe SE initiale en France, alignement 1:1 avec les ventes pour une accélération rapide du marché.
-      - label: Excellence Opérationnelle
-        text: Standardisation des playbooks techniques pour les démos et PoV.
-      - label: Alignement Transversal
-        text: Pont entre le terrain et le Product Management pour influencer la roadmap.
-
-  - title: Team Leader of Sales Engineering
-    company: Varonis
-    location: Paris, France
-    dates: Jan. 2015 -- Jun. 2016
-
-  - title: Sales Engineer MidMarket & Enterprise
-    company: Varonis
-    location: Paris, France
-    dates: Jan. 2013 -- Déc. 2014
-
-  - title: Professional Services Engineer
-    company: Varonis
-    location: Paris, France
-    dates: Oct. 2012 -- Déc. 2012
-
-early_career:
-  - title: Architecte Senior / Chef de Projet
-    company: Orange Cyberdefense
-    location: Paris, France
-    dates: Août 2011 -- Sep. 2012
-
-  - title: Ingénieur R&D
-    company: EdenWall Technologies
-    location: Dijon, France
-    dates: Jan. 2007 -- Août 2011
-
-  - title: Administrateur Systèmes & Réseaux
-    company: Autodistribution
-    location: Dijon, France
-    dates: Sep. 2001 -- Déc. 2006
+  - company: StartupXYZ
+    position: Ingenieure Logiciel
+    dates: 2019 -- 2022
+    location: New York, NY
+    bullets:
+      - >-
+        Developpement d'un dashboard analytique temps reel avec **React**
+        et **WebSocket**, servant 50K+ utilisateurs simultanes
+      - >-
+        Implementation d'une couche de cache distribuee avec Redis,
+        reduisant les temps de reponse API de **60%**
 
 education:
-  - degree: Diplôme d'Ingénieur en Informatique
-    school: ICEP
-    location: Dole, France
-    dates: 2003 -- 2007
-    note: Équivalent Master en Informatique.
-
-  - degree: BTS Informatique de Gestion
-    school: Lycée Saint-Bénigne
-    location: Dijon, France
-    dates: 2001 -- 2003
-
-certifications:
-  - name: MEDDPICC
-    institution: Saleshood
-    date: Mar. 2023
-  - name: CISSP (Formation)
-    institution: Deloitte
-    date: Oct. 2022
-  - name: Feedback, DISC & OKR
-    institution: Varonis
-    date: 2019 -- 2021
-  - name: eValue Selling
-    institution: Sandler
-    date: Mar. 2015
-
-awards: >-
-  **Dépassement de Quota** -- Varonis : 2013, 2014, 2016, 2017.
-
-publications: >-
-  Multiples interviews & publications : RTL, Europe 1, iT For Business,
-  Global Security Mag, Atlantico, Le Parisien, Journal du net, Clubic, etc.
+  - school: University of California, Berkeley
+    degree: B.S. Computer Science
+    dates: 2013 -- 2017
+    location: Berkeley, CA
 
 languages:
-  - Anglais
-  - Français
-
-interests:
-  - Technologies
-  - Course Automobile
-  - Économie Tech
-  - Sneakers
-  - Sports de Glisse
-  - Passionné de Vin
+  - language: Anglais
+    level: Natif
+  - language: Espagnol
+    level: Intermediaire (B2)

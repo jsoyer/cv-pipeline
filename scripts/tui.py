@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """CV TUI - Terminal User Interface for CV management."""
 
+from __future__ import annotations
+
 import os
 import subprocess
 import sys
@@ -33,13 +35,36 @@ for _provider, _models in PROVIDER_MODELS.items():
         ALL_MODELS.append((f"{_m}  [{_provider}]", _m))
 
 
+def get_current_app_name() -> str | None:
+    """Return the application name from the current apply/* git branch, or None."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True, text=True, cwd=WORKDIR,
+        )
+        branch = result.stdout.strip()
+        if branch.startswith("apply/"):
+            return branch[len("apply/"):]
+    except Exception:
+        pass
+    return None
+
+
 def get_app_names() -> list[tuple[str, str]]:
-    """List existing application directories as Select options, most recent first."""
+    """List existing application directories as Select options, most recent first.
+
+    The current branch's application (if any) is marked with '→ (current)'.
+    """
     apps_dir = Path(WORKDIR) / "applications"
     if not apps_dir.exists():
         return []
+    current = get_current_app_name()
     dirs = sorted([d.name for d in apps_dir.iterdir() if d.is_dir()], reverse=True)
-    return [(name, name) for name in dirs]
+    result = []
+    for name in dirs:
+        label = f"→ {name}  (current)" if name == current else name
+        result.append((label, name))
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -195,58 +220,6 @@ class AINameScreen(Screen):
                 cmd += f" MODEL={model}"
             if self._extra:
                 cmd += f" {self._extra}"
-            self.app.pop_screen()
-            self.app.run_make(cmd)
-
-
-class TailorScreen(Screen):
-    """Screen for AI tailoring with provider selection."""
-
-    BINDINGS = [Binding("escape", "pop_screen", "Back")]
-
-    def compose(self) -> ComposeResult:
-        yield Header()
-        with Vertical(id="form"):
-            yield Static("Tailor with AI")
-            options = get_app_names()
-            if options:
-                yield Select(options, id="name", prompt="Select application…")
-            else:
-                yield Input(placeholder="Application name", id="name")
-            yield Select(ALL_MODELS, id="model", prompt="Model (default)…")
-            yield Button("Gemini (default)", id="btn-gemini", variant="success")
-            yield Button("Claude", id="btn-claude", variant="primary")
-            yield Button("OpenAI", id="btn-openai")
-            yield Button("Mistral", id="btn-mistral")
-            yield Button("Ollama (local)", id="btn-ollama")
-        yield Footer()
-
-    def _get_name(self) -> str:
-        widget = self.query_one("#name")
-        if isinstance(widget, Select):
-            return "" if widget.value is Select.BLANK else str(widget.value)
-        return widget.value.strip()
-
-    def _get_model(self) -> str:
-        widget = self.query_one("#model", Select)
-        if widget.value is Select.BLANK:
-            return ""
-        return str(widget.value)
-
-    def on_button_pressed(self, event: Button.Pressed) -> None:
-        name = self._get_name()
-        if not name:
-            return
-        ai_map = {
-            "btn-gemini": "gemini", "btn-claude": "claude",
-            "btn-openai": "openai", "btn-mistral": "mistral", "btn-ollama": "ollama",
-        }
-        ai = ai_map.get(event.button.id)
-        if ai:
-            model = self._get_model()
-            cmd = f"tailor NAME={name} AI={ai}"
-            if model:
-                cmd += f" MODEL={model}"
             self.app.pop_screen()
             self.app.run_make(cmd)
 
@@ -571,6 +544,7 @@ class CVApp(App):
                 yield Button("New Application",   id="btn-new")
                 yield Button("Full Apply",        id="btn-apply")
                 yield Button("Fetch Job",         id="btn-fetch")
+                yield Button("Pipeline (tailor+review)", id="btn-pipeline", variant="success")
                 yield Button("Tailor with AI",    id="btn-tailor")
                 yield Button("Build App",         id="btn-app")
                 yield Button("Review",            id="btn-review")
@@ -624,7 +598,7 @@ class CVApp(App):
 
                 yield Static("Reporting", classes="section-title")
                 yield Button("Apply Board",       id="btn-apply-board")
-                yield Button("Status",            id="btn-status")
+                yield Button("Status (→ Board)",  id="btn-status")
                 yield Button("Stats",             id="btn-stats")
                 yield Button("Report",            id="btn-report")
                 yield Button("Digest",            id="btn-digest")
@@ -662,6 +636,10 @@ class CVApp(App):
                     "Use sidebar buttons or hotkeys:\n"
                     "  [r] Build  [o] Open  [b] Board  [h] Help  [q] Quit\n\n"
                     "Press ESC to go back from any input screen.\n\n"
+                    "Core workflow:\n"
+                    "  Full Apply → Pipeline (tailor+review) → Open\n\n"
+                    "Current application is pre-selected in all screens\n"
+                    "when you are on an apply/* git branch.\n\n"
                     "Sections: Build · Workflow · Intelligence · Outreach\n"
                     "          Interview Prep · Post-Interview · Analysis\n"
                     "          Reporting · Quality · CV Management · Export · System",
@@ -763,8 +741,10 @@ class CVApp(App):
             self.push_screen(NewAppScreen())
         elif btn == "btn-apply":
             self.push_screen(ApplyScreen())
+        elif btn == "btn-pipeline":
+            self.push_screen(AINameScreen("Pipeline — Tailor + Review", "pipeline"))
         elif btn == "btn-tailor":
-            self.push_screen(TailorScreen())
+            self.push_screen(AINameScreen("Tailor with AI", "tailor"))
         elif btn == "btn-compare":
             self.push_screen(CompareScreen())
         elif btn == "btn-export":
@@ -786,17 +766,20 @@ class CVApp(App):
 
     @work(exclusive=True, thread=True)
     def run_make(self, target: str | None = None) -> None:
-        cmd = f"make -C {WORKDIR}" if target is None else f"make -C {WORKDIR} {target}"
+        argv = ["make", "-C", str(WORKDIR)]
+        if target is not None:
+            argv.extend(target.split())
+        display_cmd = " ".join(argv)
         output = self.query_one("#output-text", Static)
-        output.update(f"Running: {cmd}...\n")
+        output.update(f"Running: {display_cmd}...\n")
         try:
             result = subprocess.run(
-                cmd, shell=True, capture_output=True, text=True, timeout=300
+                argv, capture_output=True, text=True, timeout=300,
             )
             out = result.stdout + ("\n" + result.stderr if result.stderr else "")
-            output.update(f"$ {cmd}\n\n{out}")
+            output.update(f"$ {display_cmd}\n\n{out}")
         except subprocess.TimeoutExpired:
-            output.update(f"$ {cmd}\n\nTimeout after 300s")
+            output.update(f"$ {display_cmd}\n\nTimeout after 300s")
         except Exception as e:
             output.update(f"Error: {e}")
 

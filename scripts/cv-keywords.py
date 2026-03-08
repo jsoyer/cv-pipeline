@@ -32,8 +32,7 @@ except ImportError:
     print("❌ PyYAML required: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT   = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT
 
 # Common English + French stopwords to filter
 STOPWORDS = frozenset({
@@ -230,7 +229,7 @@ def main():
                         help="Output JSON instead of formatted table")
     args = parser.parse_args()
 
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         print("❌ applications/ directory not found")
         sys.exit(1)
@@ -239,9 +238,9 @@ def main():
     if args.cv:
         cv_src = apps_dir / args.cv / "cv-tailored.yml"
         if not cv_src.exists():
-            cv_src = _REPO_ROOT / "data" / "cv.yml"
+            cv_src = REPO_ROOT / "data" / "cv.yml"
     else:
-        cv_src = _REPO_ROOT / "data" / "cv.yml"
+        cv_src = REPO_ROOT / "data" / "cv.yml"
 
     if not cv_src.exists():
         print(f"❌ CV not found: {cv_src}")
@@ -337,7 +336,7 @@ def main():
             lines.append(f"- `{row['word']}`")
         lines.append("")
 
-    out = _REPO_ROOT / "data" / "cv-keywords.md"
+    out = REPO_ROOT / "data" / "cv-keywords.md"
     out.write_text("\n".join(lines), encoding="utf-8")
     print(f"✅ Saved to {out}")
     return 0

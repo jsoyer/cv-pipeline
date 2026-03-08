@@ -5,6 +5,10 @@ on:
     - cron: "0 9 1 * *"  # Monthly at 9am on 1st
   workflow_dispatch:
 
+permissions:
+  contents: write
+  pull-requests: read
+
 jobs:
   archive:
     name: 📦 Archive stale applications

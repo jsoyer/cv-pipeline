@@ -13,6 +13,8 @@ Usage:
 Output saved to: <app-dir>/contacts.md
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -37,14 +39,10 @@ try:
 except ImportError:
     HAS_REQUESTS = False
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import load_env, load_meta, REPO_ROOT, USER_AGENT
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    )
+    "User-Agent": USER_AGENT,
 }
 
 RECRUITER_KEYWORDS = {
@@ -57,25 +55,6 @@ RECRUITER_KEYWORDS = {
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def load_env():
-    env_path = _REPO_ROOT / ".env"
-    if not env_path.exists():
-        return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, val = line.partition("=")
-            os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
-
-
-def load_meta(app_dir: Path) -> dict:
-    meta_path = app_dir / "meta.yml"
-    if not meta_path.exists():
-        return {}
-    with open(meta_path, encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
-
 
 def extract_domain(app_dir: Path, company: str) -> str:
     """Extract domain from job.url or infer from company name."""

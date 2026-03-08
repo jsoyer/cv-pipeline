@@ -17,7 +17,6 @@ Usage:
 
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -27,8 +26,7 @@ except ImportError:
     print("❌ PyYAML required: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT
 
 # ---------------------------------------------------------------------------
 # Signals — keywords to look for in the job posting
@@ -64,7 +62,7 @@ CULTURE_SIGNALS = [
 
 
 def _load_preferences() -> dict:
-    prefs_path = _REPO_ROOT / "data" / "preferences.yml"
+    prefs_path = REPO_ROOT / "data" / "preferences.yml"
     if not prefs_path.exists():
         return {}
     with open(prefs_path, encoding="utf-8") as f:

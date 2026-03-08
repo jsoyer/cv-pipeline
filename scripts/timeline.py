@@ -7,6 +7,8 @@ import yaml
 from pathlib import Path
 from datetime import datetime, timedelta
 
+from lib.common import company_from_dirname
+
 WORKDIR = Path(os.environ.get("WORKDIR", Path(__file__).resolve().parent.parent))
 
 
@@ -27,7 +29,7 @@ def get_applications():
             meta = {}
 
         name = d.name
-        company = meta.get("company", name.split("-", 2)[-1].replace("-", " ").title())
+        company = meta.get("company", company_from_dirname(name))
         position = meta.get("position", "Unknown")
         created = meta.get("created", name.split("-")[0] + "-01")
         deadline = meta.get("deadline", "")

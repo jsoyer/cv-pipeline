@@ -12,6 +12,7 @@ Usage:
     python3 scripts/batch-apply.py batch.csv --start-from 3
 """
 
+import argparse
 import csv
 import json
 import os
@@ -20,8 +21,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT
 
 
 def detect_name_from_git() -> str:
@@ -29,7 +29,7 @@ def detect_name_from_git() -> str:
     try:
         result = subprocess.run(
             ["git", "branch", "--sort=-committerdate"],
-            capture_output=True, text=True, timeout=10, cwd=_REPO_ROOT,
+            capture_output=True, text=True, timeout=10, cwd=REPO_ROOT,
         )
         for line in result.stdout.splitlines():
             line = line.strip().lstrip("* ")
@@ -74,7 +74,7 @@ def run_make(target: str, args: dict, dry_run: bool = False) -> tuple[bool, str]
     print(f"   ▶  {label}")
     try:
         result = subprocess.run(
-            cmd, cwd=_REPO_ROOT, timeout=300,
+            cmd, cwd=REPO_ROOT, timeout=300,
             text=True, capture_output=False,
         )
         if result.returncode != 0:
@@ -87,53 +87,50 @@ def run_make(target: str, args: dict, dry_run: bool = False) -> tuple[bool, str]
 
 
 def parse_args():
-    args = sys.argv[1:]
-    csv_file = None
-    dry_run = False
-    ai_provider = "gemini"
-    continue_on_error = False
-    start_from = 1
-
-    i = 0
-    while i < len(args):
-        arg = args[i]
-        if arg == "--dry-run":
-            dry_run = True
-        elif arg == "--continue-on-error":
-            continue_on_error = True
-        elif arg == "--ai" and i + 1 < len(args):
-            ai_provider = args[i + 1]
-            i += 1
-        elif arg == "--start-from" and i + 1 < len(args):
-            try:
-                start_from = int(args[i + 1])
-            except ValueError:
-                print(f"❌ Invalid --start-from value: {args[i + 1]}")
-                sys.exit(1)
-            i += 1
-        elif not arg.startswith("-") and csv_file is None:
-            csv_file = arg
-        i += 1
-
-    return csv_file, dry_run, ai_provider, continue_on_error, start_from
+    parser = argparse.ArgumentParser(
+        description="Batch Apply — Run the full apply/tailor/compile pipeline for multiple jobs. "
+                    "Input: CSV file with columns: company, position, url.",
+        epilog="CSV format (header required):\n  company,position,url\n  Datadog,Senior Solutions Engineer EMEA,https://...",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "csv_file",
+        metavar="csv-file",
+        help="Path to CSV file with columns: company, position, url",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        help="Preview without executing",
+    )
+    parser.add_argument(
+        "--ai",
+        metavar="PROVIDER",
+        dest="ai_provider",
+        default="gemini",
+        help="AI provider: gemini | claude | openai | mistral (default: gemini)",
+    )
+    parser.add_argument(
+        "--continue-on-error",
+        action="store_true",
+        dest="continue_on_error",
+        help="Continue after failures",
+    )
+    parser.add_argument(
+        "--start-from",
+        metavar="N",
+        dest="start_from",
+        type=int,
+        default=1,
+        help="Skip first N-1 rows, 1-indexed (default: 1)",
+    )
+    args = parser.parse_args()
+    return args.csv_file, args.dry_run, args.ai_provider, args.continue_on_error, args.start_from
 
 
 def main():
     csv_file, dry_run, ai_provider, continue_on_error, start_from = parse_args()
-
-    if not csv_file or csv_file in ("-h", "--help"):
-        print("Usage: scripts/batch-apply.py <csv-file> [options]")
-        print()
-        print("Options:")
-        print("  --dry-run              Preview without executing")
-        print("  --ai PROVIDER          AI provider (gemini|claude|openai|mistral)")
-        print("  --continue-on-error    Continue after failures")
-        print("  --start-from N         Skip first N-1 rows (1-indexed)")
-        print()
-        print("CSV format (header required):")
-        print("  company,position,url")
-        print("  Datadog,Senior Solutions Engineer EMEA,https://...")
-        sys.exit(0)
 
     csv_path = Path(csv_file)
     if not csv_path.exists():

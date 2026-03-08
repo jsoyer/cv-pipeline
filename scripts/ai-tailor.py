@@ -18,15 +18,17 @@ Flow:
 """
 
 import argparse
-import json
+import logging
 import os
 import re
 import shutil
 import subprocess
 import sys
-import time
-import urllib.error
+import tempfile
+import urllib.parse
 import urllib.request
+
+log = logging.getLogger(__name__)
 
 try:
     import yaml
@@ -34,47 +36,12 @@ except ImportError:
     print("❌ pyyaml required: pip install pyyaml")
     sys.exit(1)
 
-# --- Gemini ---
-GEMINI_MODEL         = "gemini-2.5-flash"
-GEMINI_FALLBACK      = "gemini-2.0-flash-lite"
-
-# --- Claude (Anthropic) ---
-CLAUDE_MODEL         = "claude-sonnet-4-6"
-CLAUDE_FALLBACK      = "claude-haiku-4-5-20251001"
-
-# --- OpenAI ---
-OPENAI_MODEL         = "gpt-4o"
-OPENAI_FALLBACK      = "gpt-4o-mini"
-OPENAI_ENDPOINT      = "https://api.openai.com/v1/chat/completions"
-
-# --- Mistral (OpenAI-compatible) ---
-MISTRAL_MODEL        = "mistral-large-latest"
-MISTRAL_FALLBACK     = "mistral-small-latest"
-MISTRAL_ENDPOINT     = "https://api.mistral.ai/v1/chat/completions"
-
-VALID_PROVIDERS = {"gemini", "claude", "openai", "mistral", "ollama"}
-
-# Known models per provider (for --model help and TUI)
-PROVIDER_MODELS = {
-    "gemini":  ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-1.5-pro"],
-    "claude":  ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
-    "openai":  ["gpt-4o", "gpt-4o-mini", "gpt-4.1", "o1-mini"],
-    "mistral": ["mistral-large-latest", "mistral-medium-latest", "mistral-small-latest"],
-    "ollama":  [],
-}
-
-KEY_ENV = {
-    "gemini":  "GEMINI_API_KEY",
-    "claude":  "ANTHROPIC_API_KEY",
-    "openai":  "OPENAI_API_KEY",
-    "mistral": "MISTRAL_API_KEY",
-    "ollama":  None,
-}
+from lib.ai import call_ai, KEY_ENV, VALID_PROVIDERS, PROVIDER_MODELS
+from lib.common import company_from_dirname, setup_logging, REPO_ROOT
 
 # --- Script paths (resolved at import time) ---
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _RENDER_PY  = os.path.join(_SCRIPT_DIR, "render.py")
-_REPO_ROOT  = os.path.dirname(_SCRIPT_DIR)
 
 # --- Auto-trim prompts ---
 CV_TRIM_PROMPT = """\
@@ -105,11 +72,35 @@ Return ONLY valid YAML with the exact same structure and keys — no markdown fe
 
 
 # ---------------------------------------------------------------------------
+# Atomic file write helper
+# ---------------------------------------------------------------------------
+
+def _atomic_write(path: str, content: str) -> None:
+    """Write content to path atomically using a temp file + os.replace.
+
+    Prevents partially-written files if the process crashes mid-write.
+    The temp file is created in the same directory as path so that
+    os.replace (rename) is guaranteed to be atomic on POSIX.
+    """
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(os.path.abspath(path)), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(content)
+        os.replace(tmp, path)
+    except BaseException:
+        os.unlink(tmp)
+        raise
+
+
+# ---------------------------------------------------------------------------
 # HTTP helpers
 # ---------------------------------------------------------------------------
 
 def fetch_url_text(url):
     """Fetch URL and extract plain text (simple HTML stripping)."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"Unsupported URL scheme: {parsed.scheme!r} (only http/https)")
     req = urllib.request.Request(url, headers={
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)"
     })
@@ -120,177 +111,6 @@ def fetch_url_text(url):
     text = re.sub(r"<[^>]+>", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text[:15000]
-
-
-# ---------------------------------------------------------------------------
-# Provider call functions
-# ---------------------------------------------------------------------------
-
-def call_gemini(prompt, api_key, retries=6, model=None):
-    """Call Gemini API with exponential backoff on 429, fallback to lite model."""
-    models_to_try = [model] if model else [GEMINI_MODEL, GEMINI_FALLBACK]
-    for model in models_to_try:
-        url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{model}:generateContent?key={api_key}"
-        )
-        payload = json.dumps({
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.4, "maxOutputTokens": 8192},
-        }).encode()
-        for attempt in range(retries):
-            req = urllib.request.Request(
-                url, data=payload, headers={"Content-Type": "application/json"}
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    result = json.loads(resp.read())
-                if model != GEMINI_MODEL:
-                    print(f"   ✓ Used fallback model: {model}", flush=True)
-                return result["candidates"][0]["content"]["parts"][0]["text"]
-            except urllib.error.HTTPError as e:
-                if e.code == 429 and attempt < retries - 1:
-                    wait = min(2 ** (attempt + 2), 120)
-                    print(f"   ⏳ Rate limited (429) on {model}, retrying in {wait}s... ({attempt + 1}/{retries})", flush=True)
-                    time.sleep(wait)
-                elif e.code == 429 and model != GEMINI_FALLBACK:
-                    print(f"   ⚠️  {model} still rate-limited, switching to {GEMINI_FALLBACK}...", flush=True)
-                    break
-                else:
-                    raise
-    tried = model or f"{GEMINI_MODEL} and {GEMINI_FALLBACK}"
-    raise RuntimeError(f"Gemini API rate-limited on {tried}. Try again later.")
-
-
-def call_claude(prompt, api_key, retries=6, model=None):
-    """Call Anthropic Claude API with exponential backoff on 429, fallback to Haiku."""
-    url = "https://api.anthropic.com/v1/messages"
-    headers = {
-        "x-api-key": api_key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
-    models_to_try = [model] if model else [CLAUDE_MODEL, CLAUDE_FALLBACK]
-    for model in models_to_try:
-        payload = json.dumps({
-            "model": model,
-            "max_tokens": 8192,
-            "messages": [{"role": "user", "content": prompt}],
-        }).encode()
-        for attempt in range(retries):
-            req = urllib.request.Request(url, data=payload, headers=headers)
-            try:
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    result = json.loads(resp.read())
-                if model != CLAUDE_MODEL:
-                    print(f"   ✓ Used fallback model: {model}", flush=True)
-                return result["content"][0]["text"]
-            except urllib.error.HTTPError as e:
-                if e.code == 429 and attempt < retries - 1:
-                    wait = min(2 ** (attempt + 2), 120)
-                    print(f"   ⏳ Rate limited (429) on {model}, retrying in {wait}s... ({attempt + 1}/{retries})", flush=True)
-                    time.sleep(wait)
-                elif e.code == 429 and model != CLAUDE_FALLBACK:
-                    print(f"   ⚠️  {model} still rate-limited, switching to {CLAUDE_FALLBACK}...", flush=True)
-                    break
-                else:
-                    raise
-    tried = model or f"{CLAUDE_MODEL} and {CLAUDE_FALLBACK}"
-    raise RuntimeError(f"Claude API rate-limited on {tried}. Try again later.")
-
-
-def call_openai_compat(prompt, endpoint, api_key, models, retries=6):
-    """Call an OpenAI-compatible chat completions endpoint (OpenAI or Mistral).
-    Handles 429 retry and model fallback identically to other providers."""
-    primary, fallback = models
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "content-type": "application/json",
-    }
-    for model in (primary, fallback):
-        payload = json.dumps({
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 8192,
-            "temperature": 0.4,
-        }).encode()
-        for attempt in range(retries):
-            req = urllib.request.Request(endpoint, data=payload, headers=headers)
-            try:
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    result = json.loads(resp.read())
-                if model != primary:
-                    print(f"   ✓ Used fallback model: {model}", flush=True)
-                return result["choices"][0]["message"]["content"]
-            except urllib.error.HTTPError as e:
-                if e.code == 429 and attempt < retries - 1:
-                    wait = min(2 ** (attempt + 2), 120)
-                    print(f"   ⏳ Rate limited (429) on {model}, retrying in {wait}s... ({attempt + 1}/{retries})", flush=True)
-                    time.sleep(wait)
-                elif e.code == 429 and model != fallback:
-                    print(f"   ⚠️  {model} still rate-limited, switching to {fallback}...", flush=True)
-                    break
-                else:
-                    raise
-    raise RuntimeError(f"API rate-limited on both {primary} and {fallback}. Try again later.")
-
-
-def call_ollama(prompt, retries=3):
-    """Call a local Ollama instance (no API key required).
-    Configure via OLLAMA_HOST (default: http://localhost:11434)
-    and OLLAMA_MODEL (default: llama3)."""
-    host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-    model = os.environ.get("OLLAMA_MODEL", "llama3")
-    url = f"{host}/api/chat"
-    payload = json.dumps({
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-    }).encode()
-    for attempt in range(retries):
-        req = urllib.request.Request(
-            url, data=payload, headers={"content-type": "application/json"}
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                result = json.loads(resp.read())
-            return result["message"]["content"]
-        except urllib.error.HTTPError as e:
-            if e.code == 404:
-                raise RuntimeError(
-                    f"Model '{model}' not found in Ollama. "
-                    f"Pull it first: ollama pull {model}"
-                ) from e
-            raise
-        except urllib.error.URLError as e:
-            if attempt < retries - 1:
-                wait = 2 ** (attempt + 1)
-                print(f"   ⏳ Ollama unreachable, retrying in {wait}s... ({attempt + 1}/{retries})", flush=True)
-                time.sleep(wait)
-            else:
-                raise RuntimeError(
-                    f"Cannot connect to Ollama at {host}. "
-                    f"Is Ollama running? Try: ollama serve"
-                ) from e
-
-
-def call_ai(prompt, provider, api_key, model=None):
-    """Dispatch to the appropriate AI provider."""
-    if provider == "gemini":
-        return call_gemini(prompt, api_key, model=model)
-    if provider == "claude":
-        return call_claude(prompt, api_key, model=model)
-    if provider == "openai":
-        primary = model or OPENAI_MODEL
-        models = (primary, primary) if model else (OPENAI_MODEL, OPENAI_FALLBACK)
-        return call_openai_compat(prompt, OPENAI_ENDPOINT, api_key, models)
-    if provider == "mistral":
-        primary = model or MISTRAL_MODEL
-        models = (primary, primary) if model else (MISTRAL_MODEL, MISTRAL_FALLBACK)
-        return call_openai_compat(prompt, MISTRAL_ENDPOINT, api_key, models)
-    if provider == "ollama":
-        return call_ollama(prompt)
-    raise ValueError(f"Unknown provider: '{provider}'. Valid: {sorted(VALID_PROVIDERS)}")
 
 
 # ---------------------------------------------------------------------------
@@ -351,23 +171,23 @@ def render_and_compile(yml_path, tex_path, app_dir, xelatex):
     if is_cl:
         cv_data = os.path.join(app_dir, "cv-tailored.yml")
         if not os.path.exists(cv_data):
-            cv_data = os.path.join(_REPO_ROOT, "data", "cv.yml")
+            cv_data = os.path.join(str(REPO_ROOT), "data", "cv.yml")
         render_cmd += ["--cv-data", cv_data]
     try:
-        subprocess.run(render_cmd, check=True, capture_output=True, cwd=_REPO_ROOT)
+        subprocess.run(render_cmd, check=True, capture_output=True, cwd=str(REPO_ROOT))
     except subprocess.CalledProcessError as e:
-        print(f"   ⚠️  render.py failed: {e.stderr.decode(errors='ignore')[:200]}")
+        log.warning("render.py failed: %s", e.stderr.decode(errors="ignore")[:200])
         return None
 
     env = os.environ.copy()
-    env["TEXINPUTS"] = os.path.join(_REPO_ROOT, "awesome-cv") + ":" + env.get("TEXINPUTS", "")
+    env["TEXINPUTS"] = os.path.join(str(REPO_ROOT), "awesome-cv") + ":" + env.get("TEXINPUTS", "")
     try:
         subprocess.run(
             [xelatex, "-interaction=nonstopmode", "-output-directory", app_dir, tex_path],
-            check=True, capture_output=True, env=env, cwd=_REPO_ROOT,
+            check=True, capture_output=True, env=env, cwd=str(REPO_ROOT),
         )
     except subprocess.CalledProcessError as e:
-        print(f"   ⚠️  xelatex failed (check {tex_path} manually)")
+        log.warning("xelatex failed (check %s manually)", tex_path)
         return None
 
     pdf_path = tex_path[:-4] + ".pdf" if tex_path.endswith(".tex") else tex_path + ".pdf"
@@ -378,7 +198,7 @@ def trim_to_pages(app_dir, yml_path, tex_path, api_key, provider, page_limit, ma
     """Render → compile → check pages → AI-trim loop until the PDF fits within page_limit."""
     xelatex = os.environ.get("XELATEX") or shutil.which("xelatex")
     if not xelatex:
-        print("   ⚠️  xelatex not in PATH — skipping auto-trim (set XELATEX env var to override)")
+        log.warning("xelatex not in PATH — skipping auto-trim (set XELATEX env var to override)")
         return
 
     is_cl = "coverletter" in os.path.basename(yml_path).lower()
@@ -387,12 +207,12 @@ def trim_to_pages(app_dir, yml_path, tex_path, api_key, provider, page_limit, ma
         print(f"   🔄 Compiling to check page count (attempt {i + 1}/{max_iterations})...", flush=True)
         pdf_path = render_and_compile(yml_path, tex_path, app_dir, xelatex)
         if not pdf_path:
-            print("   ⚠️  Compilation failed — skipping auto-trim")
+            log.warning("Compilation failed — skipping auto-trim")
             return
 
         pages = count_pdf_pages(pdf_path)
         if pages == -1:
-            print("   ⚠️  Could not count pages — skipping auto-trim")
+            log.warning("Could not count pages — skipping auto-trim")
             return
         if pages <= page_limit:
             print(f"   ✅ Fits in {pages} page(s) (limit: {page_limit})")
@@ -424,11 +244,10 @@ def trim_to_pages(app_dir, yml_path, tex_path, api_key, provider, page_limit, ma
         try:
             yaml.safe_load(trimmed)
         except Exception as e:
-            print(f"   ⚠️  Trim returned invalid YAML: {e} — stopping")
+            log.warning("Trim returned invalid YAML: %s — stopping", e)
             return
 
-        with open(yml_path, "w", encoding="utf-8") as f:
-            f.write(trimmed)
+        _atomic_write(yml_path, trimmed)
 
     # Final check
     pdf_path = render_and_compile(yml_path, tex_path, app_dir, xelatex)
@@ -437,14 +256,14 @@ def trim_to_pages(app_dir, yml_path, tex_path, api_key, provider, page_limit, ma
         if pages <= page_limit:
             print(f"   ✅ Fits in {pages} page(s) after {max_iterations} trim(s)")
             return
-    print(f"   ⚠️  Still too long after {max_iterations} trim(s) — review {yml_path} manually")
+    log.warning("Still too long after %d trim(s) — review %s manually", max_iterations, yml_path)
 
 
 # ---------------------------------------------------------------------------
 # Core tailoring functions
 # ---------------------------------------------------------------------------
 
-def tailor_cv(app_dir, job_url, job_text, api_key, provider, cv_data_path="data/cv.yml", model=None):
+def tailor_cv(app_dir, job_url, job_text, api_key, provider, cv_data_path="data/cv.yml", model=None, dry_run=False):
     """Tailor the CV using the selected AI provider. Returns YAML, not LaTeX."""
     with open(cv_data_path, encoding="utf-8") as f:
         cv_yaml = f.read()
@@ -494,29 +313,36 @@ No markdown fences, no comments, no explanations — just raw YAML.
         if not isinstance(data, dict) or "personal" not in data:
             raise ValueError("Missing 'personal' key — not a valid CV YAML")
     except Exception as e:
+        if dry_run:
+            log.warning("%s returned invalid YAML: %s", provider, e)
+            print("--- AI response (cv-tailored.yml) ---")
+            print(result)
+            return None
         raw_path = os.path.join(app_dir, "cv-tailored-raw.txt")
-        with open(raw_path, "w", encoding="utf-8") as f:
-            f.write(result)
-        print(f"⚠️  {provider} returned invalid YAML: {e}")
-        print(f"   Raw output saved to: {raw_path}")
-        print(f"   Fix the YAML manually and save as cv-tailored.yml")
+        _atomic_write(raw_path, result)
+        log.warning("%s returned invalid YAML: %s", provider, e)
+        log.warning("Raw output saved to: %s", raw_path)
+        log.warning("Fix the YAML manually and save as cv-tailored.yml")
         return None
 
     output = os.path.join(app_dir, "cv-tailored.yml")
-    with open(output, "w", encoding="utf-8") as f:
-        f.write(yaml_text)
+    if dry_run:
+        print(f"[DRY RUN] Would write: {output}")
+        print("--- AI response (cv-tailored.yml) ---")
+        print(yaml_text)
+        return None
+    _atomic_write(output, yaml_text)
     return output
 
 
 def generate_cover_letter(app_dir, job_url, job_text, api_key, provider,
-                          cv_data_path="data/cv.yml", model=None):
+                          cv_data_path="data/cv.yml", model=None, dry_run=False):
     """Generate cover letter YAML using the selected AI provider."""
     with open(cv_data_path, encoding="utf-8") as f:
         cv_yaml = f.read()
 
     app_name = os.path.basename(app_dir)
-    parts = app_name.split("-", 2)
-    company = parts[2].replace("-", " ").title() if len(parts) > 2 else "Company"
+    company = company_from_dirname(app_name)
 
     prompt = f"""You are an expert career advisor specializing in Sales Engineering, \
 Pre-Sales, and Technical Leadership roles.
@@ -576,17 +402,25 @@ closing_paragraph: >-
         if not isinstance(data, dict) or "sections" not in data:
             raise ValueError("Missing 'sections' key — not a valid cover letter YAML")
     except Exception as e:
+        if dry_run:
+            log.warning("%s returned invalid YAML: %s", provider, e)
+            print("--- AI response (coverletter.yml) ---")
+            print(result)
+            return None
         raw_path = os.path.join(app_dir, "coverletter-raw.txt")
-        with open(raw_path, "w", encoding="utf-8") as f:
-            f.write(result)
-        print(f"⚠️  {provider} returned invalid YAML: {e}")
-        print(f"   Raw output saved to: {raw_path}")
-        print(f"   Fix the YAML manually and save as coverletter.yml")
+        _atomic_write(raw_path, result)
+        log.warning("%s returned invalid YAML: %s", provider, e)
+        log.warning("Raw output saved to: %s", raw_path)
+        log.warning("Fix the YAML manually and save as coverletter.yml")
         return None
 
     output = os.path.join(app_dir, "coverletter.yml")
-    with open(output, "w", encoding="utf-8") as f:
-        f.write(yaml_text)
+    if dry_run:
+        print(f"[DRY RUN] Would write: {output}")
+        print("--- AI response (coverletter.yml) ---")
+        print(yaml_text)
+        return None
+    _atomic_write(output, yaml_text)
     return output
 
 
@@ -620,17 +454,30 @@ def main():
         "--model", default=None,
         help=f"Override default model (e.g. {', '.join(all_models[:4])}…). Leave blank for provider default.",
     )
+    parser.add_argument(
+        "--dry-run", "-n", action="store_true",
+        help="Call the AI provider and show what would be written, but do not write any files or compile",
+    )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable debug logging"
+    )
     args = parser.parse_args()
+
+    log = setup_logging(args.verbose)
 
     provider = args.provider
     model = args.model or None
+    dry_run = args.dry_run
+
+    if dry_run:
+        print("[DRY RUN] No files will be written and no compilation will run.")
 
     # Resolve API key for the chosen provider
     key_var = KEY_ENV[provider]
     api_key = os.environ.get(key_var) if key_var else None
     if key_var and not api_key:
-        print(f"❌ Set {key_var} environment variable")
-        print(f"   export {key_var}=your-key-here")
+        log.error("Set %s environment variable", key_var)
+        log.error("   export %s=your-key-here", key_var)
         sys.exit(1)
 
     print(f"🤖 Provider: {provider}" + (f" · Model: {model}" if model else ""), flush=True)
@@ -641,7 +488,7 @@ def main():
 
     app_dir = args.app_dir
     if not os.path.isdir(app_dir):
-        print(f"❌ Directory not found: {app_dir}")
+        log.error("Directory not found: %s", app_dir)
         sys.exit(1)
 
     # Read job URL / fallback to job.txt
@@ -660,7 +507,7 @@ def main():
             job_text = fetch_url_text(job_url)
             print(f"   Extracted {len(job_text)} characters")
         except Exception as e:
-            print(f"⚠️  Could not fetch URL: {e}")
+            log.warning("Could not fetch URL: %s", e)
 
     if not job_text and os.path.exists(job_txt_file):
         with open(job_txt_file, encoding="utf-8") as f:
@@ -668,7 +515,7 @@ def main():
         print(f"   Using fallback: {job_txt_file}")
 
     if not job_text:
-        print("❌ No job description found. Provide job.url or job.txt")
+        log.error("No job description found. Provide job.url or job.txt")
         sys.exit(1)
 
     # Read meta.yml for company/position (needed for auto-trim .tex filenames)
@@ -687,7 +534,7 @@ def main():
     cv_yml_path = None
     if not args.cl_only:
         print("🤖 Tailoring CV (YAML)...")
-        cv_yml_path = tailor_cv(app_dir, job_url, job_text, api_key, provider, model=model)
+        cv_yml_path = tailor_cv(app_dir, job_url, job_text, api_key, provider, model=model, dry_run=dry_run)
         if cv_yml_path:
             print(f"   ✅ {cv_yml_path}")
             if args.auto_trim and meta_company and meta_position:
@@ -695,15 +542,15 @@ def main():
                 print("📏 Auto-trimming CV to 2 pages...")
                 trim_to_pages(app_dir, cv_yml_path, cv_tex, api_key, provider, page_limit=2, model=model)
             elif args.auto_trim:
-                print("   ⚠️  meta.yml missing company/position — skipping auto-trim")
-        else:
-            print("   ❌ CV tailoring failed — see raw output above")
+                log.warning("meta.yml missing company/position — skipping auto-trim")
+        elif not dry_run:
+            log.error("CV tailoring failed — see raw output above")
 
     # Cover letter generation
     cl_yml_path = None
     if not args.cv_only:
         print("🤖 Generating cover letter (YAML)...")
-        cl_yml_path = generate_cover_letter(app_dir, job_url, job_text, api_key, provider, model=model)
+        cl_yml_path = generate_cover_letter(app_dir, job_url, job_text, api_key, provider, model=model, dry_run=dry_run)
         if cl_yml_path:
             print(f"   ✅ {cl_yml_path}")
             if args.auto_trim and meta_company and meta_position:
@@ -711,9 +558,9 @@ def main():
                 print("📏 Auto-trimming Cover Letter to 1 page...")
                 trim_to_pages(app_dir, cl_yml_path, cl_tex, api_key, provider, page_limit=1, model=model)
             elif args.auto_trim:
-                print("   ⚠️  meta.yml missing company/position — skipping auto-trim")
-        else:
-            print("   ❌ Cover letter generation failed — see raw output above")
+                log.warning("meta.yml missing company/position — skipping auto-trim")
+        elif not dry_run:
+            log.error("Cover letter generation failed — see raw output above")
 
     print(f"\n✨ Done! Next steps:")
     print(f"   1. Review YAML files in {app_dir}/")

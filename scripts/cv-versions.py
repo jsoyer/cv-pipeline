@@ -20,6 +20,8 @@ Usage:
     scripts/cv-versions.py show vp-se
 """
 
+from __future__ import annotations
+
 import argparse
 import shutil
 import subprocess
@@ -33,10 +35,10 @@ except ImportError:
     print("❌ PyYAML required: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
-_VERSIONS_DIR = _REPO_ROOT / "data" / "versions"
-_CV_PATH = _REPO_ROOT / "data" / "cv.yml"
+from lib.common import REPO_ROOT
+
+_VERSIONS_DIR = REPO_ROOT / "data" / "versions"
+_CV_PATH = REPO_ROOT / "data" / "cv.yml"
 
 
 def _ensure_versions_dir() -> None:
@@ -151,7 +153,7 @@ def cmd_activate(args) -> int:
     # Backup current cv.yml
     if _CV_PATH.exists():
         ts     = datetime.now().strftime("%Y%m%d-%H%M%S")
-        backup = _REPO_ROOT / "data" / f"cv.backup-{ts}.yml"
+        backup = REPO_ROOT / "data" / f"cv.backup-{ts}.yml"
         shutil.copy2(_CV_PATH, backup)
         print(f"🔒 Backup: {backup.name}")
 
@@ -178,7 +180,7 @@ def cmd_diff(args) -> int:
     print(f"📊 Diff: current cv.yml  ←→  {args.version}\n")
     result = subprocess.run(
         ["diff", "--color=always", "-u", str(src), str(_CV_PATH)],
-        cwd=_REPO_ROOT,
+        cwd=REPO_ROOT,
     )
     if result.returncode == 0:
         print("✅ No differences — files are identical")

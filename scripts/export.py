@@ -15,11 +15,9 @@ import re
 import sys
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    print("❌ pyyaml required: pip install pyyaml")
-    sys.exit(1)
+from lib.common import require_yaml
+
+yaml = require_yaml()
 
 
 def strip_bold(text):

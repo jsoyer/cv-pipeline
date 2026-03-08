@@ -244,7 +244,7 @@ def main():
                     if main:
                         text = main.get_text()
                         break
-                except:
+                except Exception:
                     pass
             job_text = text[:5000]
         except Exception as e:

@@ -20,6 +20,7 @@ Examples:
     scripts/notify.py applications/2026-02-datadog --status rejected --dry-run
 """
 
+import argparse
 import json
 import os
 import subprocess
@@ -27,18 +28,13 @@ import sys
 from pathlib import Path
 
 try:
-    import yaml
-except ImportError:
-    print("❌ PyYAML not installed. Run: pip install pyyaml")
-    sys.exit(1)
-
-try:
     import requests
 except ImportError:
     requests = None  # Handled gracefully per action
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import load_env, load_meta, REPO_ROOT, require_yaml
+
+yaml = require_yaml()
 
 VALID_STATUSES = {"applied", "interview", "offer", "rejected", "ghosted"}
 
@@ -57,17 +53,6 @@ STATUS_EMOJI = {
     "rejected": "❌",
     "ghosted": "👻",
 }
-
-
-def load_meta(app_dir: Path) -> dict:
-    meta_path = app_dir / "meta.yml"
-    if not meta_path.exists():
-        return {}
-    try:
-        with open(meta_path, encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
-        return {}
 
 
 def save_meta(app_dir: Path, meta: dict) -> None:
@@ -98,20 +83,20 @@ def update_meta_yml(app_dir: Path, status: str, message: str, dry_run: bool) -> 
     try:
         subprocess.run(
             ["git", "add", str(app_dir / "meta.yml")],
-            cwd=_REPO_ROOT, check=True, capture_output=True,
+            cwd=REPO_ROOT, check=True, capture_output=True,
         )
         diff = subprocess.run(
             ["git", "diff", "--cached", "--quiet"],
-            cwd=_REPO_ROOT, capture_output=True,
+            cwd=REPO_ROOT, capture_output=True,
         )
         if diff.returncode != 0:
             subprocess.run(
                 ["git", "commit", "-m", f"notify: {app_dir.name} → {status}"],
-                cwd=_REPO_ROOT, check=True, capture_output=True,
+                cwd=REPO_ROOT, check=True, capture_output=True,
             )
             subprocess.run(
                 ["git", "push"],
-                cwd=_REPO_ROOT, check=True, capture_output=True,
+                cwd=REPO_ROOT, check=True, capture_output=True,
             )
             print(f"   ✅ Committed and pushed")
         else:
@@ -278,7 +263,7 @@ def add_github_label(app_name: str, status: str, dry_run: bool) -> bool:
     try:
         result = subprocess.run(
             ["gh", "pr", "edit", branch, "--add-label", label],
-            capture_output=True, text=True, timeout=15, cwd=_REPO_ROOT,
+            capture_output=True, text=True, timeout=15, cwd=REPO_ROOT,
         )
         if result.returncode == 0:
             print(f"   ✅ GitHub PR label added: {label}")
@@ -297,50 +282,41 @@ def add_github_label(app_name: str, status: str, dry_run: bool) -> bool:
 
 
 def parse_args():
-    args = sys.argv[1:]
-    app_dir_str = None
-    status = None
-    message = ""
-    dry_run = False
-
-    i = 0
-    while i < len(args):
-        arg = args[i]
-        if arg in ("-h", "--help"):
-            print(__doc__)
-            sys.exit(0)
-        elif arg == "--status" and i + 1 < len(args):
-            status = args[i + 1].lower()
-            i += 1
-        elif arg == "--message" and i + 1 < len(args):
-            message = args[i + 1]
-            i += 1
-        elif arg == "--dry-run":
-            dry_run = True
-        elif not arg.startswith("-") and app_dir_str is None:
-            app_dir_str = arg
-        i += 1
-
-    return app_dir_str, status, message, dry_run
+    parser = argparse.ArgumentParser(
+        description="Notify — Update application status across all tracking systems in one command. "
+                    "Updates meta.yml, posts to Slack/Discord, updates Notion, and adds a GitHub PR label.",
+        epilog=f"STATUS values: {' | '.join(sorted(VALID_STATUSES))}",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "app_dir",
+        metavar="app-dir",
+        help="Path to the application directory (e.g. applications/2026-02-datadog)",
+    )
+    parser.add_argument(
+        "--status",
+        required=True,
+        choices=sorted(VALID_STATUSES),
+        help="New status to record",
+    )
+    parser.add_argument(
+        "--message",
+        metavar="MSG",
+        default="",
+        help="Optional note to store in meta.yml and include in notifications",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        help="Preview all actions without making any changes",
+    )
+    args = parser.parse_args()
+    return args.app_dir, args.status.lower(), args.message, args.dry_run
 
 
 def main():
     app_dir_str, status, message, dry_run = parse_args()
-
-    if not app_dir_str:
-        print("Usage: scripts/notify.py <app-dir> --status STATUS [--message MSG] [--dry-run]")
-        print(f"STATUS: {' | '.join(sorted(VALID_STATUSES))}")
-        sys.exit(1)
-
-    if not status:
-        print("❌ --status is required")
-        print(f"   Values: {' | '.join(sorted(VALID_STATUSES))}")
-        sys.exit(1)
-
-    if status not in VALID_STATUSES:
-        print(f"❌ Invalid status: '{status}'")
-        print(f"   Valid values: {' | '.join(sorted(VALID_STATUSES))}")
-        sys.exit(1)
 
     app_dir = Path(app_dir_str)
     if not app_dir.is_dir():
@@ -353,14 +329,7 @@ def main():
     app_name = app_dir.name
     emoji = STATUS_EMOJI.get(status, "📋")
 
-    # Load .env if present
-    env_path = _REPO_ROOT / ".env"
-    if env_path.exists():
-        for line in env_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, _, val = line.partition("=")
-                os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
+    load_env()
 
     mode = " [DRY RUN]" if dry_run else ""
     print(f"{emoji} Notifying: {company} — {status.upper()}{mode}")

@@ -7,6 +7,7 @@ Usage:
     scripts/fetch-job.py --extract <URL>   # print {"company": "...", "position": "..."} as JSON
 """
 
+import argparse
 import json
 import os
 import re
@@ -24,9 +25,10 @@ except ImportError:
     print("❌ beautifulsoup4 required: pip install beautifulsoup4")
     sys.exit(1)
 
+from lib.common import USER_AGENT
+
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "User-Agent": USER_AGENT,
 }
 
 REMOVE_TAGS = ["script", "style", "nav", "footer", "header", "aside", "form", "noscript"]
@@ -199,9 +201,36 @@ def extract_job_info(url, text, html):
 # ---------------------------------------------------------------------------
 
 def main():
+    parser = argparse.ArgumentParser(
+        prog="fetch-job.py",
+        description=(
+            "Fetch job description from URL and save as job.txt.\n\n"
+            "Reads job.url from the application directory, fetches the page "
+            "(with Jina Reader fallback for SPAs), and writes job.txt.\n\n"
+            "Alternatively, use --extract <URL> to extract company/position "
+            "metadata from a URL and print it as JSON."
+        ),
+    )
+    parser.add_argument(
+        "app_dir",
+        metavar="application-dir",
+        nargs="?",
+        help="Path to the application directory (must contain job.url)",
+    )
+    parser.add_argument(
+        "--extract",
+        metavar="URL",
+        dest="extract_url",
+        help='Extract company/position from URL and print as JSON {"company": ..., "position": ...}',
+    )
+    args = parser.parse_args()
+
+    if not args.extract_url and not args.app_dir:
+        parser.error("provide an application-dir or --extract URL")
+
     # --extract URL mode: print company/position as JSON
-    if len(sys.argv) >= 3 and sys.argv[1] == "--extract":
-        url = sys.argv[2]
+    if args.extract_url:
+        url = args.extract_url
         try:
             text, html = fetch_url(url)
         except Exception as e:
@@ -211,12 +240,7 @@ def main():
         print(json.dumps(info))
         return 0
 
-    if len(sys.argv) < 2:
-        print("Usage: scripts/fetch-job.py <application-dir>")
-        print("       scripts/fetch-job.py --extract <URL>")
-        sys.exit(1)
-
-    app_dir = sys.argv[1]
+    app_dir = args.app_dir
     if not os.path.isdir(app_dir):
         print(f"❌ Directory not found: {app_dir}")
         sys.exit(1)

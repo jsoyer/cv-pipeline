@@ -9,6 +9,7 @@ Usage:
     scripts/stats.py --json    # JSON output
 """
 
+import argparse
 import json
 import os
 import re
@@ -100,7 +101,18 @@ def parse_date(date_str):
 
 
 def main():
-    json_mode = "--json" in sys.argv
+    parser = argparse.ArgumentParser(
+        description="Application Statistics & Metrics Dashboard. "
+                    "Tracks conversion rates, ATS scores, timelines, and trends."
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_mode",
+        help="Output results as JSON",
+    )
+    args = parser.parse_args()
+    json_mode = args.json_mode
 
     apps_dir = Path("applications")
     if not apps_dir.exists():

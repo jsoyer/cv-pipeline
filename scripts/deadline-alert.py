@@ -20,6 +20,8 @@ Exit codes:
     1 = alerts were sent (or would be sent with --dry-run)
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -40,29 +42,9 @@ try:
 except ImportError:
     HAS_REQUESTS = False
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import load_env, load_meta, REPO_ROOT
 
 TERMINAL_OUTCOMES = {"offer", "rejected", "ghosted"}
-
-
-def load_env():
-    env_path = _REPO_ROOT / ".env"
-    if not env_path.exists():
-        return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, val = line.partition("=")
-            os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
-
-
-def load_meta(app_dir: Path) -> dict:
-    meta_path = app_dir / "meta.yml"
-    if not meta_path.exists():
-        return {}
-    with open(meta_path, encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
 
 
 def _parse_date(date_str) -> datetime | None:
@@ -137,7 +119,7 @@ def main():
 
     load_env()
 
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         return 0
 

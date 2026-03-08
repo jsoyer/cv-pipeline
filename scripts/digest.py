@@ -22,6 +22,8 @@ Options:
     --json       Dump digest data as JSON
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import os
@@ -43,8 +45,9 @@ try:
 except ImportError:
     HAS_REQUESTS = False
 
+from lib.common import load_env, load_meta, REPO_ROOT
+
 _SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
 
 TERMINAL_OUTCOMES = {"offer", "rejected", "ghosted"}
 
@@ -61,28 +64,6 @@ OUTCOME_EMOJI = {
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-def load_env():
-    env_path = _REPO_ROOT / ".env"
-    if not env_path.exists():
-        return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, val = line.partition("=")
-            os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
-
-
-def load_meta(app_dir: Path) -> dict:
-    meta_path = app_dir / "meta.yml"
-    if not meta_path.exists():
-        return {}
-    try:
-        with open(meta_path, encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
-        return {}
-
 
 def _parse_date(date_str) -> datetime | None:
     if not date_str:
@@ -112,7 +93,7 @@ def _get_ats_score(app_dir: Path) -> float | None:
     try:
         result = subprocess.run(
             [sys.executable, str(_SCRIPT_DIR / "ats-score.py"), str(app_dir), "--json"],
-            capture_output=True, text=True, timeout=30, cwd=_REPO_ROOT,
+            capture_output=True, text=True, timeout=30, cwd=REPO_ROOT,
         )
         data = json.loads(result.stdout)
         return data.get("score")
@@ -125,7 +106,7 @@ def _get_ats_score(app_dir: Path) -> float | None:
 # ---------------------------------------------------------------------------
 
 def collect_apps() -> list:
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         return []
     apps = []
@@ -263,7 +244,7 @@ def _ats_summary(apps: list) -> tuple:
     print(f"\n📊 Computing ATS scores for {len(scoreable)} application(s)...")
     scores = []
     for a in scoreable:
-        app_dir = _REPO_ROOT / "applications" / a["name"]
+        app_dir = REPO_ROOT / "applications" / a["name"]
         score = _get_ats_score(app_dir)
         if score is not None:
             scores.append((a, score))
@@ -422,7 +403,7 @@ def main():
         + action_section
     )
 
-    out_path = _REPO_ROOT / "digest.md"
+    out_path = REPO_ROOT / "digest.md"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(content)
     print(f"\n✅ Digest saved to {out_path}")

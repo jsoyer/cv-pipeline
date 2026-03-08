@@ -18,6 +18,8 @@ Usage:
     scripts/references.py show "Jane Doe"
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
 from datetime import date
@@ -29,9 +31,8 @@ except ImportError:
     print("❌ PyYAML required: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
-_REFS_FILE = _REPO_ROOT / "data" / "references.yml"
+from lib.common import REPO_ROOT
+_REFS_FILE = REPO_ROOT / "data" / "references.yml"
 
 
 # ---------------------------------------------------------------------------

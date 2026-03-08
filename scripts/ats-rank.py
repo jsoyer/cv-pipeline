@@ -13,6 +13,8 @@ Options:
     --json          Output JSON
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import subprocess
@@ -25,8 +27,9 @@ try:
 except ImportError:
     HAS_YAML = False
 
+from lib.common import load_meta as _lib_load_meta, REPO_ROOT
+
 _SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
 
 OUTCOME_EMOJI = {
     "applied":   "📤",
@@ -39,16 +42,11 @@ OUTCOME_EMOJI = {
 
 
 def load_meta(app_dir: Path) -> dict:
+    # Soft fallback: lib.common.load_meta calls require_yaml() which hard-exits
+    # when PyYAML is missing. Guard here so ATS ranking still works without it.
     if not HAS_YAML:
         return {}
-    meta_path = app_dir / "meta.yml"
-    if not meta_path.exists():
-        return {}
-    try:
-        with open(meta_path, encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
-        return {}
+    return _lib_load_meta(app_dir)
 
 
 def score_app(app_dir: Path) -> dict | None:
@@ -56,7 +54,7 @@ def score_app(app_dir: Path) -> dict | None:
     try:
         result = subprocess.run(
             [sys.executable, str(_SCRIPT_DIR / "ats-score.py"), str(app_dir), "--json"],
-            capture_output=True, text=True, timeout=30, cwd=_REPO_ROOT,
+            capture_output=True, text=True, timeout=30, cwd=REPO_ROOT,
         )
         # returncode 0 = score>=60%, 1 = score<60% — both are valid results
         if result.stdout.strip():
@@ -75,7 +73,7 @@ def main():
     parser.add_argument("--json", action="store_true", help="Output JSON")
     args = parser.parse_args()
 
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         print("❌ No applications/ directory found")
         sys.exit(1)

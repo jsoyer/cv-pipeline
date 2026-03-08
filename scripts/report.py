@@ -16,6 +16,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from lib.common import company_from_dirname, REPO_ROOT
+
 try:
     import yaml
 except ImportError:
@@ -29,9 +31,7 @@ FUNNEL_STAGES = ["Draft", "Applied", "Interview", "Offer", "Rejected"]
 def get_app_info(app_dir):
     """Extract application metadata from directory."""
     name = app_dir.name
-    # Parse: YYYY-MM-company → company
-    parts = name.split("-", 2)
-    company = parts[2].replace("-", " ").title() if len(parts) > 2 else name
+    company = company_from_dirname(name)
 
     # Find position from file names
     position = "Unknown"
@@ -267,7 +267,7 @@ def main():
                         default="terminal", help="Output format")
     args = parser.parse_args()
 
-    apps_dir = Path("applications")
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         print("No applications/ directory found.")
         return 0

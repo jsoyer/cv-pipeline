@@ -9,11 +9,17 @@
        archive-app linkedin-profile \
        interview-brief prep-star interview-debrief linkedin-post export-csv \
        elevator-pitch onboarding-plan cover-critique interview-sim \
-       cv-keywords blind-spots
+       cv-keywords blind-spots current pipeline
 
 # Auto-load .env if present (for GEMINI_API_KEY)
 -include .env
-export
+# Only export variables that child processes actually need (not all .env secrets)
+export TEXINPUTS
+export GEMINI_API_KEY ANTHROPIC_API_KEY OPENAI_API_KEY MISTRAL_API_KEY
+export OLLAMA_HOST OLLAMA_MODEL
+export SLACK_WEBHOOK_URL DISCORD_WEBHOOK_URL
+export TELEGRAM_BOT_TOKEN TELEGRAM_CHAT_ID
+export LINKEDIN_ACCESS_TOKEN
 
 # Reset LANG to avoid conflict with system locale (fr_FR.UTF-8)
 # User can still pass: make render LANG=fr
@@ -34,7 +40,6 @@ else
     SED_I := sed -i
 endif
 TEXINPUTS := $(CURDIR)/awesome-cv/:$(TEXINPUTS)
-export TEXINPUTS
 
 # Use venv Python if available, else fall back to system python3
 PYTHON := $(shell [ -x venv/bin/python3 ] && echo venv/bin/python3 || echo python3)
@@ -48,6 +53,25 @@ endif
 ifeq (,$(shell kpsewhich fontawesome6.sty 2>/dev/null))
     $(shell tlmgr init-usertree 2>/dev/null; tlmgr install fontawesome6 2>/dev/null)
 endif
+
+# Auto-detect NAME from current apply/* branch when not explicitly provided
+ifeq ($(NAME),)
+_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null)
+ifneq ($(filter apply/%,$(_BRANCH)),)
+NAME := $(_BRANCH:apply/%=%)
+endif
+endif
+
+# Print the current application name (derived from apply/* branch)
+# Usage: make current
+current:
+	@branch=$$(git rev-parse --abbrev-ref HEAD 2>/dev/null); \
+	if printf '%s' "$$branch" | grep -q "^apply/"; then \
+		echo "$${branch#apply/}"; \
+	else \
+		echo "Not on an apply/* branch (current: $$branch)" >&2; \
+		exit 1; \
+	fi
 
 # Build master resume and cover letter
 all:
@@ -130,30 +154,39 @@ app:
 new:
 	@test -n "$(COMPANY)" || (echo "Usage: make new COMPANY=Snowflake POSITION=\"Senior Director SE\"" && exit 1)
 	@test -n "$(POSITION)" || (echo "Usage: make new COMPANY=Snowflake POSITION=\"Senior Director SE\"" && exit 1)
-	$(eval SLUG := $(shell echo "$(COMPANY)" | tr '[:upper:]' '[:lower:]' | tr ' ' '-'))
-	$(eval DATE := $(shell date +%Y-%m))
-	$(eval DIR := applications/$(DATE)-$(SLUG))
-	@test ! -d "$(DIR)" || (echo "❌ Directory $(DIR) already exists" && exit 1)
-	@mkdir -p "$(DIR)"
-	@cp CV.tex "$(DIR)/CV - $(COMPANY) - $(POSITION).tex"
-	@cp CoverLetter.tex "$(DIR)/CoverLetter - $(COMPANY) - $(POSITION).tex"
-	@if [ -f data/coverletter.yml ]; then cp data/coverletter.yml "$(DIR)/coverletter.yml"; fi
-	@printf "# Application metadata\ncompany: $(COMPANY)\nposition: $(POSITION)\ncreated: $(DATE)\n# deadline: YYYY-MM-DD\n# outcome: applied | interview | offer | rejected | ghosted\n# response_days:\n" > "$(DIR)/meta.yml"
-	@$(SED_I) 's/Hiring Manager/$(COMPANY) Talent Acquisition Team/g' "$(DIR)/CoverLetter - $(COMPANY) - $(POSITION).tex"
-	@$(SED_I) 's/Company Name/$(COMPANY)/g' "$(DIR)/CoverLetter - $(COMPANY) - $(POSITION).tex"
-	@$(SED_I) 's/\[Position Title\]/$(POSITION)/g' "$(DIR)/CoverLetter - $(COMPANY) - $(POSITION).tex"
-	@$(SED_I) 's/Dear Hiring Manager,/To the $(COMPANY) Talent Acquisition Team,/g' "$(DIR)/CoverLetter - $(COMPANY) - $(POSITION).tex"
-	@$(SED_I) 's/Why \[Company\]?/Why $(COMPANY)?/g' "$(DIR)/CoverLetter - $(COMPANY) - $(POSITION).tex"
-	@echo "✅ Created: $(DIR)/"
-	@echo "   📝 $(DIR)/CV - $(COMPANY) - $(POSITION).tex"
-	@echo "   📝 $(DIR)/CoverLetter - $(COMPANY) - $(POSITION).tex"
-	@if [ -f "$(DIR)/coverletter.yml" ]; then echo "   📝 $(DIR)/coverletter.yml"; fi
-	@echo "   📝 $(DIR)/meta.yml"
-	@echo ""
-	@echo "👉 Next steps:"
-	@echo "   1. Set deadline in $(DIR)/meta.yml"
-	@echo "   2. Tailor the CV and cover letter content"
-	@echo "   3. Build: make app NAME=$(DATE)-$(SLUG)"
+	@{ \
+		set -e; \
+		COMPANY="$(COMPANY)"; \
+		POSITION="$(POSITION)"; \
+		SLUG=$$(printf '%s' "$$COMPANY" | tr '[:upper:]' '[:lower:]' | tr ' ' '-'); \
+		DATE=$$(date +%Y-%m); \
+		DIR="applications/$$DATE-$$SLUG"; \
+		test ! -d "$$DIR" || { echo "Directory $$DIR already exists"; exit 1; }; \
+		mkdir -p "$$DIR"; \
+		cp CV.tex "$$DIR/CV - $$COMPANY - $$POSITION.tex"; \
+		cp CoverLetter.tex "$$DIR/CoverLetter - $$COMPANY - $$POSITION.tex"; \
+		if [ -f data/coverletter.yml ]; then cp data/coverletter.yml "$$DIR/coverletter.yml"; fi; \
+		printf '# Application metadata\ncompany: %s\nposition: %s\ncreated: %s\n# deadline: YYYY-MM-DD\n# outcome: applied | interview | offer | rejected | ghosted\n# response_days:\n' \
+			"$$COMPANY" "$$POSITION" "$$DATE" > "$$DIR/meta.yml"; \
+		ESCAPED_CO=$$(printf '%s' "$$COMPANY" | sed 's/[&/\]/\\&/g'); \
+		ESCAPED_PO=$$(printf '%s' "$$POSITION" | sed 's/[&/\]/\\&/g'); \
+		CL="$$DIR/CoverLetter - $$COMPANY - $$POSITION.tex"; \
+		$(SED_I) "s/Hiring Manager/$$ESCAPED_CO Talent Acquisition Team/g" "$$CL"; \
+		$(SED_I) "s/Company Name/$$ESCAPED_CO/g" "$$CL"; \
+		$(SED_I) "s/\[Position Title\]/$$ESCAPED_PO/g" "$$CL"; \
+		$(SED_I) "s/Dear Hiring Manager,/To the $$ESCAPED_CO Talent Acquisition Team,/g" "$$CL"; \
+		$(SED_I) "s/Why \[Company\]?/Why $$ESCAPED_CO?/g" "$$CL"; \
+		echo "Created: $$DIR/"; \
+		echo "   $$DIR/CV - $$COMPANY - $$POSITION.tex"; \
+		echo "   $$DIR/CoverLetter - $$COMPANY - $$POSITION.tex"; \
+		if [ -f "$$DIR/coverletter.yml" ]; then echo "   $$DIR/coverletter.yml"; fi; \
+		echo "   $$DIR/meta.yml"; \
+		echo ""; \
+		echo "Next steps:"; \
+		echo "   1. Set deadline in $$DIR/meta.yml"; \
+		echo "   2. Tailor the CV and cover letter content"; \
+		echo "   3. Build: make app NAME=$$DATE-$$SLUG"; \
+	}
 
 # Full application workflow: scaffold + branch + PR
 # Usage: make apply URL=https://...                          (auto-extract company/position)
@@ -294,6 +327,30 @@ print(f'   Score: {a:.0f}% ({sign}{d:.0f}%)')" 2>/dev/null || true; \
 		git diff --cached --quiet || \
 		(git commit -m "tailor: $(NAME)" && git push)
 
+# Full pipeline: AI tailor → review (render + compile + validate + ATS score)
+# NAME is auto-detected from the current apply/* branch when not provided.
+# Usage: make pipeline [NAME=2026-02-company] [AI=gemini] [TARGET=cl]
+pipeline:
+	@test -n "$(NAME)" || (echo "Usage: make pipeline [NAME=2026-02-company] [AI=gemini]" && exit 1)
+	@test -d "applications/$(NAME)" || (echo "Directory applications/$(NAME) not found" && exit 1)
+	@echo "╔═══════════════════════════════════════════════════════════════╗"
+	@printf "║  Pipeline: %-51s║\n" "$(NAME)"
+	@echo "╚═══════════════════════════════════════════════════════════════╝"
+	@echo ""
+	@if [ ! -f "applications/$(NAME)/job.txt" ]; then \
+		echo "⚠️  No job.txt — ATS scoring will be skipped"; \
+		echo "   Tip: make fetch NAME=$(NAME)  to download the job description first"; \
+		echo ""; \
+	fi
+	@echo "━━━ 1/2  Tailor ($(AI)) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@$(MAKE) --no-print-directory tailor NAME=$(NAME) AI=$(AI) $(if $(MODEL),MODEL=$(MODEL)) TARGET=$(TARGET)
+	@echo ""
+	@echo "━━━ 2/2  Review ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+	@$(MAKE) --no-print-directory review NAME=$(NAME)
+	@echo ""
+	@echo "✅ Pipeline complete — applications/$(NAME)"
+	@echo "   Next: make open NAME=$(NAME)"
+
 # Render CV.tex + CoverLetter.tex from YAML source of truth
 # Usage: make render  /  make render LANG=fr  /  make render PDFA=true  /  make render DRAFT=true
 render:
@@ -321,32 +378,9 @@ score:
 	@test -d "applications/$(NAME)" || (echo "Directory applications/$(NAME) not found" && exit 1)
 	@$(PYTHON) scripts/ats-score.py "applications/$(NAME)" || true
 
-# Dashboard: list all applications with PR status
-status:
-	@echo "📊 Application Status"
-	@echo ""
-	@printf "%-28s %-12s %s\n" "APPLICATION" "STATUS" "PR"
-	@printf "%-28s %-12s %s\n" "───────────────────────────" "──────────" "──────────────────────"
-	@for dir in applications/*/; do \
-		[ -d "$$dir" ] || continue; \
-		name=$$(basename "$$dir"); \
-		branch="apply/$$name"; \
-		pr_info=$$(gh pr list --head "$$branch" --json state,url --jq 'if length > 0 then .[0] | "\(.state) \(.url)" else "" end' 2>/dev/null); \
-		if [ -n "$$pr_info" ]; then \
-			state=$$(echo "$$pr_info" | cut -d' ' -f1); \
-			url=$$(echo "$$pr_info" | cut -d' ' -f2-); \
-			case "$$state" in \
-				OPEN) symbol="🟡 Draft" ;; \
-				MERGED) symbol="✅ Applied" ;; \
-				CLOSED) symbol="❌ Closed" ;; \
-				*) symbol="⚪ $$state" ;; \
-			esac; \
-		else \
-			symbol="⚪ Local"; \
-			url="-"; \
-		fi; \
-		printf "%-28s %-12s %s\n" "$$name" "$$symbol" "$$url"; \
-	done
+# Dashboard — alias for apply-board (Kanban view by pipeline stage)
+# Use 'make apply-board' directly; 'make status' is kept for backwards compatibility.
+status: apply-board
 
 # LaTeX lint check
 # Usage: make lint  or  make lint NAME=2026-02-databricks
@@ -1065,7 +1099,9 @@ help:
 	@echo "Application workflow:"
 	@echo "  make new COMPANY=X POSITION=\"Y\"   Scaffold locally (no git)"
 	@echo "  make apply URL=...                Full workflow: branch + scaffold + PR (auto-extract company/position)"
-	@echo "  make tailor NAME=... [AI=gemini]  Tailor with AI (gemini|claude|openai|mistral|ollama)"
+	@echo "  make current                      Print current application name (from apply/* branch)"
+	@echo "  make pipeline [AI=gemini]         Tailor + review in one step (NAME auto-detected from branch)"
+	@echo "  make tailor [NAME=...] [AI=gemini] Tailor with AI — NAME auto-detected from branch"
 	@echo "  make fetch NAME=...               Fetch job description from URL"
 	@echo "  make archive NAME=...             Archive completed application"
 	@echo ""
@@ -1078,11 +1114,12 @@ help:
 	@echo "  make length                       Analyze CV length vs 2 pages"
 	@echo ""
 	@echo "Reporting:"
-	@echo "  make status                       Dashboard of all applications"
+	@echo "  make apply-board [STAGE=...]      Kanban board by pipeline stage (→ use this)"
+	@echo "  make status                       Alias for apply-board (backwards compat)"
 	@echo "  make stats                        Application statistics & metrics"
 	@echo "  make effectiveness                Outcome vs ATS score analysis"
-	@echo "  make report [FORMAT=markdown]      Application report + funnel"
-	@echo "  make changelog [FORMAT=markdown]   CV diff changelog"
+	@echo "  make report [FORMAT=markdown]     Application report + funnel analytics"
+	@echo "  make changelog [FORMAT=markdown]  CV diff changelog"
 	@echo "  make timeline                     Mermaid Gantt chart"
 	@echo ""
 	@echo "Quality:"

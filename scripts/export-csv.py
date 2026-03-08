@@ -17,6 +17,8 @@ Usage:
     scripts/export-csv.py [--output PATH] [--no-ats] [--json]
 """
 
+from __future__ import annotations
+
 import argparse
 import csv
 import json
@@ -32,7 +34,8 @@ except ImportError:
     sys.exit(1)
 
 _SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT   = _SCRIPT_DIR.parent
+
+from lib.common import REPO_ROOT
 
 FIELDNAMES = [
     "app_dir", "company", "position", "created", "deadline",
@@ -63,7 +66,7 @@ def _ats_score(app_dir: Path) -> tuple[float, int, int]:
     try:
         r = subprocess.run(
             [sys.executable, str(_SCRIPT_DIR / "ats-score.py"), str(app_dir), "--json"],
-            capture_output=True, text=True, timeout=30, cwd=_REPO_ROOT,
+            capture_output=True, text=True, timeout=30, cwd=REPO_ROOT,
         )
         if r.stdout.strip():
             data = json.loads(r.stdout)
@@ -140,7 +143,7 @@ def main():
                         help="Output JSON instead of CSV")
     args = parser.parse_args()
 
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         print("❌ applications/ directory not found")
         return 1
@@ -158,7 +161,7 @@ def main():
         print(json.dumps(rows, indent=2, ensure_ascii=False))
         return 0
 
-    out_path = Path(args.output) if args.output else _REPO_ROOT / "applications-export.csv"
+    out_path = Path(args.output) if args.output else REPO_ROOT / "applications-export.csv"
 
     with open(out_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES)

@@ -16,9 +16,9 @@ Usage:
     scripts/tone-check.py <application-dir> --json
 """
 
+import argparse
 import json
 import math
-import os
 import re
 import sys
 from pathlib import Path
@@ -29,8 +29,7 @@ except ImportError:
     print("❌ PyYAML not installed. Run: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT
 
 # Strong past-tense action verbs
 STRONG_ACTION_VERBS = {
@@ -218,12 +217,25 @@ def extract_cl_text(cl_data: dict) -> str:
 
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: scripts/tone-check.py <application-dir> [--json]")
-        sys.exit(0)
+    parser = argparse.ArgumentParser(
+        description="Tone Consistency Checker — Analyze CV and Cover Letter for tone coherence. "
+                    "No API key required. Pure local analysis."
+    )
+    parser.add_argument(
+        "app_dir",
+        metavar="application-dir",
+        help="Path to the application directory",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_mode",
+        help="Output results as JSON",
+    )
+    args = parser.parse_args()
 
-    app_dir = Path(sys.argv[1])
-    json_mode = "--json" in sys.argv
+    app_dir = Path(args.app_dir)
+    json_mode = args.json_mode
 
     if not app_dir.is_dir():
         print(f"❌ Directory not found: {app_dir}")
@@ -232,7 +244,7 @@ def main():
     # Load CV YAML
     cv_path = app_dir / "cv-tailored.yml"
     if not cv_path.exists():
-        cv_path = _REPO_ROOT / "data" / "cv.yml"
+        cv_path = REPO_ROOT / "data" / "cv.yml"
     if not cv_path.exists():
         print(f"❌ No cv-tailored.yml or data/cv.yml found")
         sys.exit(1)

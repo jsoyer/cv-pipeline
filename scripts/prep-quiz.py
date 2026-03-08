@@ -15,20 +15,15 @@ Categories: behavioral | technical | company | to-ask | all (default)
 Rating: 1=Missed  2=OK  3=Nailed it
 """
 
+from __future__ import annotations
+
 import argparse
 import random
 import re
 import sys
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    print("❌ PyYAML required: pip install pyyaml")
-    sys.exit(1)
-
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT
 
 # ANSI colours
 _RESET  = "\033[0m"
@@ -290,7 +285,7 @@ def main():
     )
     args = parser.parse_args()
 
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         print("❌ applications/ directory not found")
         return 1

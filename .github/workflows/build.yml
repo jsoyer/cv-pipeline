@@ -11,6 +11,7 @@ jobs:
   build:
     name: 📄 Compile LaTeX
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container:
       image: texlive/texlive:latest
 
@@ -21,13 +22,17 @@ jobs:
           submodules: recursive
 
       - name: 🔨 Build master CV & cover letter
+        shell: bash
         run: |
+          set -euo pipefail
           export TEXINPUTS="$(pwd)/awesome-cv/:"
           xelatex -output-directory=. "CV.tex"
           xelatex -output-directory=. "CoverLetter.tex"
 
       - name: 🎯 Build all applications
+        shell: bash
         run: |
+          set -euo pipefail
           export TEXINPUTS="$(pwd)/awesome-cv/:"
           for dir in applications/*/; do
             [ -d "$dir" ] || continue
@@ -39,7 +44,9 @@ jobs:
           done
 
       - name: 🔍 Check for leftover placeholders
+        shell: bash
         run: |
+          set -euo pipefail
           ERRORS=""
           for f in applications/**/*.tex; do
             [ -f "$f" ] || continue
@@ -62,7 +69,9 @@ jobs:
           fi
 
       - name: 📝 Spell check
+        shell: bash
         run: |
+          set -euo pipefail
           apt-get update -qq && apt-get install -y -qq aspell aspell-en > /dev/null 2>&1
           ERRORS=""
           for f in $(find . -name "*.tex" -not -path "./awesome-cv/*"); do
@@ -131,6 +140,7 @@ jobs:
   variants:
     name: 📄 Build variants (PDF/A + French)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container:
       image: texlive/texlive:latest
 
@@ -141,12 +151,16 @@ jobs:
           submodules: recursive
 
       - name: 📦 Install Python dependencies
+        shell: bash
         run: |
+          set -euo pipefail
           apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null 2>&1
           pip3 install pyyaml --break-system-packages
 
       - name: 🔒 Build PDF/A variant
+        shell: bash
         run: |
+          set -euo pipefail
           export TEXINPUTS="$(pwd)/awesome-cv/:"
           python3 scripts/render.py -d data/cv.yml -o CV-pdfa.tex --pdfa
           xelatex -output-directory=. CV-pdfa.tex
@@ -157,7 +171,9 @@ jobs:
 
       - name: 🌐 Build French variant
         if: hashFiles('data/cv-fr.yml') != ''
+        shell: bash
         run: |
+          set -euo pipefail
           export TEXINPUTS="$(pwd)/awesome-cv/:"
           python3 scripts/render.py -d data/cv.yml -o CV-fr.tex -l fr
           xelatex -output-directory=. CV-fr.tex

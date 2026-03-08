@@ -18,6 +18,9 @@ except ImportError:
     print("❌ pyyaml required: pip install pyyaml")
     sys.exit(1)
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from lib.common import setup_logging
+
 
 # ---------------------------------------------------------------------------
 # LaTeX helpers
@@ -107,9 +110,10 @@ def render_key_wins(wins):
     return "\n".join(lines)
 
 
-def render_experience(entries):
+def _render_entries_section(section_title, entries):
+    """Render a cventries section (Work Experience, Early Career, etc.)."""
     lines = [
-        "\\cvsection{Work Experience}",
+        f"\\cvsection{{{section_title}}}",
         "",
         "\\begin{cventries}",
     ]
@@ -143,25 +147,12 @@ def render_experience(entries):
     return "\n".join(lines)
 
 
+def render_experience(entries):
+    return _render_entries_section("Work Experience", entries)
+
+
 def render_early_career(entries):
-    lines = [
-        "\\cvsection{Early Career}",
-        "",
-        "\\begin{cventries}",
-    ]
-    for e in entries:
-        lines.append("")
-        lines.append("%---------------------------------------------------------")
-        lines.append("  \\cventry")
-        lines.append(f"    {{{process_text(e['title'])}}}")
-        lines.append(f"    {{{process_text(e['company'])}}}")
-        lines.append(f"    {{{process_text(e['location'])}}}")
-        lines.append(f"    {{{e['dates']}}}")
-        lines.append("    {}")
-    lines.append("")
-    lines.append("%---------------------------------------------------------")
-    lines.append("\\end{cventries}")
-    return "\n".join(lines)
+    return _render_entries_section("Early Career", entries)
 
 
 def render_education(entries):
@@ -329,11 +320,11 @@ def render_coverletter(cl_data, personal, theme=None, pdfa=False, draft=False):
 
     for s in cl_data["sections"]:
         sections.append(f"\\lettersection{{{process_text(s['title'])}}}")
-        sections.append(process_text(s["content"]))
+        sections.append(process_text(s["content"]).replace("\n", "\n\n"))
         sections.append("")
 
     if "closing_paragraph" in cl_data:
-        sections.append(process_text(cl_data["closing_paragraph"]))
+        sections.append(process_text(cl_data["closing_paragraph"]).replace("\n", "\n\n"))
         sections.append("")
 
     sections.append("\\end{cvletter}")
@@ -633,7 +624,12 @@ def main():
         "--cv-data",
         help="CV YAML for personal info (cover letter mode, default: data/cv.yml)",
     )
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Enable debug logging"
+    )
     args = parser.parse_args()
+
+    log = setup_logging(args.verbose)
 
     # Resolve data path with optional language override
     base = Path(args.data)
@@ -645,11 +641,19 @@ def main():
         data_path = base
 
     if not data_path.exists():
-        print(f"❌ Data file not found: {data_path}")
+        log.error("Data file not found: %s", data_path)
         sys.exit(1)
 
     with open(data_path, encoding="utf-8") as f:
         data = yaml.safe_load(f)
+
+    if not data:
+        log.error("YAML file is empty or invalid: %s", data_path)
+        sys.exit(1)
+
+    if not isinstance(data, dict):
+        log.error("YAML file must be a mapping at the top level: %s", data_path)
+        sys.exit(1)
 
     # Auto-detect: cover letter has "recipient" key, CV has "profile" key
     is_coverletter = "recipient" in data
@@ -690,18 +694,51 @@ def main():
             cv_data_path = data_path.parent / "cv.yml"
 
         if not cv_data_path.exists():
-            print(f"❌ CV data not found: {cv_data_path}")
-            print("   Use --cv-data to specify the CV YAML file for personal info.")
+            log.error("CV data not found: %s", cv_data_path)
+            log.error("Use --cv-data to specify the CV YAML file for personal info.")
             sys.exit(1)
 
         with open(cv_data_path, encoding="utf-8") as f:
             cv_data = yaml.safe_load(f)
+
+        if not cv_data or not isinstance(cv_data, dict):
+            log.error("CV YAML file is empty or invalid: %s", cv_data_path)
+            sys.exit(1)
+
+        if "personal" not in cv_data:
+            log.error("Missing required key 'personal' in %s", cv_data_path)
+            sys.exit(1)
+
+        cl_required_keys = ["recipient", "title", "opening", "closing", "sections"]
+        for key in cl_required_keys:
+            if key not in data:
+                log.error("Missing required key '%s' in %s", key, data_path)
+                sys.exit(1)
 
         output = render_coverletter(
             data, cv_data["personal"], theme=theme, pdfa=args.pdfa, draft=args.draft
         )
         print(f"📨 Cover letter mode (personal info from {cv_data_path})")
     else:
+        cv_required_keys = [
+            "personal",
+            "profile",
+            "skills",
+            "key_wins",
+            "experience",
+            "early_career",
+            "education",
+            "certifications",
+            "awards",
+            "publications",
+            "languages",
+            "interests",
+        ]
+        for key in cv_required_keys:
+            if key not in data:
+                log.error("Missing required key '%s' in %s", key, data_path)
+                sys.exit(1)
+
         output = render_cv(data, theme=theme, pdfa=args.pdfa, draft=args.draft)
 
     with open(out_path, "w", encoding="utf-8") as f:

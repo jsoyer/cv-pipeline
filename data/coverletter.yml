@@ -1,31 +1,32 @@
-# Cover Letter data — single source of truth
-# Auto-rendered to CoverLetter.tex by scripts/render.py
-# Personal info is loaded from data/cv.yml (not duplicated here)
-
-# Theme overrides for cover letter (optional, merged with cv theme)
-theme:
-  geometry: "left=1.4cm, top=.8cm, right=1.4cm, bottom=1.2cm, footskip=.5cm"
-
 recipient:
-  name: Hiring Manager
-  company: Company Name
+  company: Acme Corp
+  position: Staff Software Engineer
+  hiring_manager: Hiring Manager
+  address: "123 Tech Street, San Francisco, CA 94105"
 
-title: "Application for [Position Title]"
-opening: "Dear Hiring Manager,"
-closing: "Best regards,"
+opening: >-
+  I am writing to express my strong interest in the Staff Software Engineer
+  position at Acme Corp. With 8+ years of experience building scalable
+  distributed systems and leading engineering teams, I am excited about the
+  opportunity to contribute to your mission of democratizing developer tools.
 
-sections:
-  - title: About Me
-    content: >-
-      [Your introduction paragraph here.]
-  - title: "Why [Company]?"
-    content: >-
-      [Why you want to join this company.]
-  - title: Why Me?
-    content: >-
-      [Your key differentiators and value proposition.]
+body:
+  - >-
+    In my current role at TechCorp, I architected an event-driven
+    microservices platform processing 10M+ events daily with 99.95% uptime.
+    I led the cross-functional team that rebuilt the billing system,
+    eliminating **$2.4M in annual revenue leakage**. These experiences have
+    sharpened my ability to deliver high-impact technical solutions while
+    mentoring growing engineering teams.
+  - >-
+    What draws me to Acme Corp is your commitment to developer experience
+    and open-source innovation. Your recent launch of the cloud-native
+    deployment platform aligns perfectly with my expertise in CI/CD
+    optimization and infrastructure automation. I am particularly excited
+    about the opportunity to bring my experience scaling platforms from
+    startup to enterprise-grade reliability.
 
-closing_paragraph: >-
-  Thank you for your time and consideration. I look forward to the possibility
-  of discussing how my background can contribute to the continued success of
-  your organization.
+closing: >-
+  I would welcome the opportunity to discuss how my experience in distributed
+  systems architecture and engineering leadership can contribute to Acme
+  Corp's growth. Thank you for considering my application.

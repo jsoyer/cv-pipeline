@@ -27,20 +27,7 @@ except ImportError:
     print("❌ PyYAML required: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
-
-# ---------------------------------------------------------------------------
-# Word lists
-# ---------------------------------------------------------------------------
-
-STOP_WORDS = frozenset({
-    "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
-    "of", "with", "by", "is", "are", "was", "were", "be", "been", "being",
-    "have", "has", "had", "do", "does", "did", "this", "that", "as", "from",
-    "across", "into", "through", "both", "all", "each", "their", "our",
-    "its", "my", "your", "they", "we", "he", "she", "it", "also", "over",
-})
+from lib.common import REPO_ROOT, STOP_WORDS
 
 STRONG_VERBS = frozenset({
     "accelerated", "achieved", "built", "championed", "closed", "coached",
@@ -326,12 +313,12 @@ def main():
     args = parser.parse_args()
 
     if args.name:
-        data_path = _REPO_ROOT / "applications" / args.name / "cv-tailored.yml"
+        data_path = REPO_ROOT / "applications" / args.name / "cv-tailored.yml"
         if not data_path.exists():
             print(f"⚠️  No cv-tailored.yml for {args.name} — falling back to data/cv.yml")
-            data_path = _REPO_ROOT / "data" / "cv.yml"
+            data_path = REPO_ROOT / "data" / "cv.yml"
     else:
-        data_path = _REPO_ROOT / args.data
+        data_path = REPO_ROOT / args.data
 
     if not data_path.exists():
         print(f"❌ File not found: {data_path}")

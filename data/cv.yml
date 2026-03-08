@@ -1,169 +1,94 @@
 personal:
-  first_name: Jerome
-  last_name: Soyer
-  position: RVP of Sales Engineering
-  address: Paris, France
-  mobile: "(+33) 07 78 11 02 94"
-  email: jeromesoyer@gmail.com
-  linkedin: jeromesoyer
+  first_name: Jane
+  last_name: Doe
+  position: Senior Software Engineer
+  address: San Francisco, CA
+  mobile: "(+1) 555-012-3456"
+  email: jane.doe@example.com
+  linkedin: janedoe
+  github: janedoe
 
 profile: >-
-  Strategic Technology Leader with 10+ years of experience reporting to Global VPs.
-  Expert in scaling high-performing regional Solutions Architecture organizations (50+ HC)
-  and driving hyper-growth in consumption-based SaaS environments. Proven impact in scaling
-  French ARR by 55%+ and leading teams through strategic M&A. Currently focused on
-  leveraging this expertise to build and accelerate regional territories in the Data /
-  CyberSecurity space.
+  Full-stack engineer with 8+ years of experience building scalable web
+  applications and distributed systems. Passionate about clean code,
+  developer tooling, and mentoring junior engineers. Led migration of
+  monolithic architecture to microservices, reducing deploy times by 70%.
 
 skills:
-  - category: Executive Leadership
-    items: Managers of Managers (50+ HC), M&A Technical Integration, Change Management, Strategic Talent Acquisition, High-Performance Culture
-  - category: Sales Engineering
-    items: MEDDPICC, Value-Based Selling, PoV Strategy, Technical Win Optimization, Enterprise SaaS GTM
-  - category: Revenue Growth
-    items: Upsell Pipeline Strategy, Consumption-Based Expansion, Land & Expand Frameworks
-  - category: Data & AI Intelligence
-    items: AI TRiSM, DSPM, Data Governance, Data Compliance, Insider Threat Detection, AI-driven Email Security, DAM
-  - category: Operational Excellence
-    items: ARR Growth, Post-Sales Convergence (TAM/CS), NRR Growth, Enablement & Playbooks, C-Level Engagement
+  - category: Languages
+    items: Python, TypeScript, Go, Rust, SQL
+  - category: Frameworks
+    items: React, Next.js, FastAPI, Django, Express
+  - category: Infrastructure
+    items: AWS, Docker, Kubernetes, Terraform, GitHub Actions
+  - category: Data
+    items: PostgreSQL, Redis, Elasticsearch, Kafka, DynamoDB
 
 key_wins:
-  - title: Global Banking Leaders (7-figure RFP Wins)
-    text: >-
-      Orchestrated technical strategy for two of Europe's largest banking groups.
-      Secured multi-year SaaS contracts aligned with ECB regulatory standards.
-  - title: National Ministry (Strategic 7-figure POV)
-    text: >-
-      Directed high-stakes POV securing massive national framework agreement
-      in sensitive government environment.
-  - title: Enterprise Market (6-figure Legacy Displacements)
-    text: >-
-      Accelerated market share (Luxury, Retail, Telecom) displacing incumbents
-      with value-based POV framework.
-  - title: Strategic Expansion (High 6-figure Wins)
-    text: >-
-      Closed strategic Tier-1 deals by industrializing the Upsell Pipeline,
-      maximizing customer lifetime value.
+  - Reduced CI/CD pipeline duration from 45min to 8min, saving 200+ engineer-hours/month
+  - Led migration to microservices architecture serving 2M+ daily active users
+  - Built internal developer platform adopted by 150+ engineers across 12 teams
+  - Mentored 8 junior engineers, 5 promoted to mid-level within 18 months
 
 experience:
-  - title: Regional VP of Sales Engineering
-    company: Varonis
-    location: Paris, France
-    dates: Jan. 2022 -- Present
-    items:
-      - label: Executive Management
-        text: Directing **50+ HC** across Continental Europe (1 Director, 8 Managers).
-      - label: Organizational Transformation
-        text: Orchestrated pivot from Perpetual to **100% SaaS/Consumption** model.
-      - label: M&A & Innovation
-        text: Leading technical field integration of acquisitions (ALLTrue.ai, SlashNext, Cyral) for unified AI-powered Data Intelligence platform.
-      - label: Performance
-        text: Consistently delivering **20%+ YoY ARR growth** in French market (**70%+ ARR territory**).
-      - label: Strategic Win Strategy
-        text: Partnering on **7-figure Enterprise deals** using MEDDPICC and Challenger Sales.
-      - label: RFP Excellence
-        text: Standardized RFP process improving win rates; orchestrated cross-functional teams (Legal, Product, Security).
-      - label: Portfolio Management
-        text: Overseeing technical strategy for **$100M+ ARR** regional portfolio.
-      - label: Customer Success
-        text: Established France CS/TAM division (4 Managers, 4 CSOMs, 10+ TAMs) focused on consumption metrics and NRR.
-      - label: Talent Development
-        text: Proactive hiring/mentoring program resulting in multiple promotions to management.
+  - company: TechCorp Inc.
+    position: Senior Software Engineer
+    dates: 2022 -- Present
+    location: San Francisco, CA
+    bullets:
+      - >-
+        Architected and deployed **event-driven microservices** processing
+        10M+ events/day on AWS ECS with Kafka, achieving 99.95% uptime
+      - >-
+        Led cross-functional team of 6 engineers to rebuild the billing
+        system, reducing revenue leakage by **$2.4M annually**
+      - >-
+        Designed CI/CD pipeline with GitHub Actions and ArgoCD, cutting
+        deployment frequency from weekly to **15+ deploys/day**
 
-  - title: Director of Sales Engineering
-    company: Varonis
-    location: Paris, France
-    dates: Sep. 2018 -- Dec. 2021
-    items:
-      - text: Scaled technical field organization across **France, Netherlands, Italy, Portugal and Spain**.
-      - text: Partnered with Sales VPs to define territory strategies and secure **Enterprise deals**.
-      - label: Bid Management
-        text: Led technical response for major tenders, 100% compliance, consistently beating incumbents.
+  - company: StartupXYZ
+    position: Software Engineer
+    dates: 2019 -- 2022
+    location: New York, NY
+    bullets:
+      - >-
+        Built real-time analytics dashboard with **React** and **WebSocket**,
+        serving 50K+ concurrent users during peak traffic
+      - >-
+        Implemented distributed caching layer with Redis, reducing API
+        response times by **60%** (p99 from 800ms to 320ms)
+      - >-
+        Contributed to open-source internal framework, now used by 3
+        external companies
 
-  - title: Manager of Sales Engineering
-    company: Varonis
-    location: Paris, France
-    dates: Jul. 2016 -- Aug. 2018
-    items:
-      - label: Team Building
-        text: Recruited initial core SE team in France, 1:1 alignment with sales for rapid market acceleration.
-      - label: Operational Excellence
-        text: Standardized technical playbooks for demos and PoV.
-      - label: Cross-Functional Alignment
-        text: Bridged field and Product Management to influence roadmap.
-
-  - title: Team Leader of Sales Engineering
-    company: Varonis
-    location: Paris, France
-    dates: Jan. 2015 -- Jun. 2016
-
-  - title: Sales Engineer MidMarket & Enterprise
-    company: Varonis
-    location: Paris, France
-    dates: Jan. 2013 -- Dec. 2014
-
-  - title: Professional Services Engineer
-    company: Varonis
-    location: Paris, France
-    dates: Oct. 2012 -- Dec. 2012
-
-early_career:
-  - title: Senior Architect / Chief Project
-    company: Orange Cyberdefense
-    location: Paris, France
-    dates: Aug. 2011 -- Sep. 2012
-
-  - title: R&D Engineer
-    company: EdenWall Technologies
-    location: Dijon, France
-    dates: Jan. 2007 -- Aug. 2011
-
-  - title: System & Network Administrator
-    company: Autodistribution
-    location: Dijon, France
-    dates: Sep. 2001 -- Dec. 2006
+  - company: BigDataCo
+    position: Junior Software Engineer
+    dates: 2017 -- 2019
+    location: Austin, TX
+    bullets:
+      - >-
+        Developed ETL pipelines processing **5TB+ daily** using Python
+        and Apache Spark on AWS EMR
+      - >-
+        Created monitoring dashboards with Grafana and Prometheus,
+        reducing incident response time by **40%**
 
 education:
-  - degree: Master's Degree in Computer Engineering
-    school: ICEP
-    location: Dole, France
-    dates: 2003 -- 2007
-    note: Equivalent to MSc in Computer Science.
-
-  - degree: Higher National Diploma (BTEC) in IT
-    school: Lycée Saint-Bénigne
-    location: Dijon, France
-    dates: 2001 -- 2003
+  - school: University of California, Berkeley
+    degree: B.S. Computer Science
+    dates: 2013 -- 2017
+    location: Berkeley, CA
+    bullets:
+      - "GPA: 3.8/4.0, Dean's List"
 
 certifications:
-  - name: MEDDPICC
-    institution: Saleshood
-    date: Mar. 2023
-  - name: CISSP (Training)
-    institution: Deloitte
-    date: Oct. 2022
-  - name: Feedback, DISC & OKR
-    institution: Varonis
-    date: 2019 -- 2021
-  - name: eValue Selling
-    institution: Sandler
-    date: Mar. 2015
-
-awards: >-
-  **Quota Overachievement** -- Varonis: 2013, 2014, 2016, 2017.
-
-publications: >-
-  Multiple interviews & publications: RTL, Europe 1, iT For Business,
-  Global Security Mag, Atlantico, Le Parisien, Journal du net, Clubic, etc.
+  - name: AWS Solutions Architect -- Professional
+    date: "2023"
+  - name: Certified Kubernetes Administrator (CKA)
+    date: "2022"
 
 languages:
-  - English
-  - French
-
-interests:
-  - Technologies
-  - Racing
-  - Tech Economy
-  - Sneakers
-  - Board Sports
-  - Wine lover
+  - language: English
+    level: Native
+  - language: Spanish
+    level: Intermediate (B2)

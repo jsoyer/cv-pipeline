@@ -28,7 +28,8 @@ except ImportError:
     sys.exit(1)
 
 _SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+
+from lib.common import REPO_ROOT
 
 # ---------------------------------------------------------------------------
 # Import helpers from ats-score.py (hyphen in filename → importlib)
@@ -69,7 +70,7 @@ def _load_applications(since=None) -> list:
     Return sorted list of applications that have job.txt.
     Each item: {name, company, position, created, job_text}
     """
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         return []
 
@@ -194,7 +195,7 @@ def _flatten_yaml_text(obj) -> str:
 
 def _load_cv_text() -> str:
     """Load data/cv.yml and return all text content lowercased."""
-    cv_path = _REPO_ROOT / "data" / "cv.yml"
+    cv_path = REPO_ROOT / "data" / "cv.yml"
     if not cv_path.exists():
         return ""
     with open(cv_path, encoding="utf-8") as f:
@@ -476,7 +477,7 @@ def main() -> None:
 
     if args.save:
         md = _build_markdown(data)
-        out_path = _REPO_ROOT / "keyword-trends.md"
+        out_path = REPO_ROOT / "keyword-trends.md"
         with open(out_path, "w", encoding="utf-8") as f:
             f.write(md)
         if not args.json:

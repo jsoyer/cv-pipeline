@@ -16,6 +16,8 @@ Usage:
 Outcomes: applied | interview | offer | rejected | ghosted
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import shutil
@@ -24,14 +26,11 @@ import sys
 from datetime import datetime, date
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    print("❌ PyYAML required: pip install pyyaml")
-    sys.exit(1)
+from lib.common import REPO_ROOT, require_yaml
+
+yaml = require_yaml()
 
 _SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
 
 VALID_OUTCOMES = {"applied", "interview", "offer", "rejected", "ghosted"}
 
@@ -61,7 +60,7 @@ def _parse_date(val) -> datetime | None:
     return None
 
 
-def _git(args: list[str], cwd: Path = _REPO_ROOT, check: bool = False) -> subprocess.CompletedProcess:
+def _git(args: list[str], cwd: Path = REPO_ROOT, check: bool = False) -> subprocess.CompletedProcess:
     return subprocess.run(
         ["git"] + args, cwd=cwd, capture_output=True, text=True, check=check
     )
@@ -76,7 +75,7 @@ def _run_ats_score(app_dir: Path) -> dict | None:
         result = subprocess.run(
             [sys.executable, str(_SCRIPT_DIR / "ats-score.py"),
              str(app_dir), "--json"],
-            capture_output=True, text=True, timeout=30, cwd=_REPO_ROOT
+            capture_output=True, text=True, timeout=30, cwd=REPO_ROOT
         )
         if result.stdout.strip():
             return json.loads(result.stdout)
@@ -214,18 +213,26 @@ def main():
         "--no-tag", action="store_true",
         help="Skip git tag creation"
     )
+    parser.add_argument(
+        "--dry-run", "-n", action="store_true",
+        help="Print what would be done without moving files or running git commands",
+    )
     args = parser.parse_args()
+
+    dry_run = args.dry_run
+    if dry_run:
+        print("[DRY RUN] No files will be moved and no git commands will run.")
 
     app_dir = Path(args.app_dir)
     if not app_dir.is_dir():
         # Try resolving from repo root
-        app_dir = _REPO_ROOT / "applications" / app_dir.name
+        app_dir = REPO_ROOT / "applications" / app_dir.name
         if not app_dir.is_dir():
             print(f"❌ Directory not found: {args.app_dir}")
             sys.exit(1)
 
     app_name = app_dir.name
-    archive_root = _REPO_ROOT / "archive"
+    archive_root = REPO_ROOT / "archive"
     archive_dest = archive_root / app_name
 
     if archive_dest.exists():
@@ -247,9 +254,12 @@ def main():
     if args.outcome and not outcome:
         meta["outcome"] = args.outcome
         outcome = args.outcome
-        with open(meta_path, "w", encoding="utf-8") as f:
-            yaml.dump(meta, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
-        print(f"   📝 Updated outcome → {outcome}")
+        if dry_run:
+            print(f"[DRY RUN] Would update outcome in {meta_path} → {outcome}")
+        else:
+            with open(meta_path, "w", encoding="utf-8") as f:
+                yaml.dump(meta, f, allow_unicode=True, default_flow_style=False, sort_keys=False)
+            print(f"   📝 Updated outcome → {outcome}")
     elif args.outcome and outcome and args.outcome != outcome:
         print(f"   ℹ️  outcome already set to '{outcome}' — use meta.yml to override")
 
@@ -268,56 +278,75 @@ def main():
     # Build ARCHIVE.md
     archive_md = build_archive_md(app_dir, meta, ats)
     archive_md_path = app_dir / "ARCHIVE.md"
-    archive_md_path.write_text(archive_md, encoding="utf-8")
-    print(f"   📄 Generated ARCHIVE.md")
+    if dry_run:
+        print(f"[DRY RUN] Would write: {archive_md_path}")
+    else:
+        archive_md_path.write_text(archive_md, encoding="utf-8")
+        print(f"   📄 Generated ARCHIVE.md")
 
     # Create archive directory + move
-    archive_root.mkdir(exist_ok=True)
-    shutil.move(str(app_dir), str(archive_dest))
-    print(f"   📁 Moved → archive/{app_name}/")
+    if dry_run:
+        print(f"[DRY RUN] Would move: {app_dir} -> {archive_dest}")
+    else:
+        archive_root.mkdir(exist_ok=True)
+        shutil.move(str(app_dir), str(archive_dest))
+        print(f"   📁 Moved → archive/{app_name}/")
 
     # Git tag
     tag = f"archived/{app_name}"
     if not args.no_tag:
         tag_msg = f"Archive: {company} — {position} ({outcome or 'unknown'})"
-        r = _git(["tag", "-a", tag, "-m", tag_msg])
-        if r.returncode == 0:
-            print(f"   🏷️  Tagged: {tag}")
+        if dry_run:
+            print(f"[DRY RUN] Would run: git tag -a {tag} -m '{tag_msg}'")
         else:
-            print(f"   ⚠️  Tag failed: {r.stderr.strip()}")
+            r = _git(["tag", "-a", tag, "-m", tag_msg])
+            if r.returncode == 0:
+                print(f"   🏷️  Tagged: {tag}")
+            else:
+                print(f"   ⚠️  Tag failed: {r.stderr.strip()}")
 
     # Delete branches
     branch = f"apply/{app_name}"
-    r = _git(["show-ref", "--quiet", f"refs/heads/{branch}"])
-    if r.returncode == 0:
-        _git(["branch", "-d", branch])
-        print(f"   🔀 Deleted local branch: {branch}")
+    if dry_run:
+        print(f"[DRY RUN] Would run: git branch -d {branch} (if it exists)")
+        print(f"[DRY RUN] Would run: git push origin --delete {branch} (if remote exists)")
+    else:
+        r = _git(["show-ref", "--quiet", f"refs/heads/{branch}"])
+        if r.returncode == 0:
+            _git(["branch", "-d", branch])
+            print(f"   🔀 Deleted local branch: {branch}")
 
-    r = _git(["ls-remote", "--heads", "origin", branch])
-    if r.stdout.strip():
-        _git(["push", "origin", "--delete", branch])
-        print(f"   🔀 Deleted remote branch: {branch}")
+        r = _git(["ls-remote", "--heads", "origin", branch])
+        if r.stdout.strip():
+            _git(["push", "origin", "--delete", branch])
+            print(f"   🔀 Deleted remote branch: {branch}")
 
     # Commit
     if not args.no_commit:
-        _git(["add", "-A", str(archive_dest), str(archive_root)])
-        # Stage the deletion from applications/
-        _git(["add", "-u"])
-        r = _git([
-            "commit", "-m",
-            f"archive: {app_name} — {outcome or 'unknown'} {emoji}\n\n"
-            f"Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
-        ])
-        if r.returncode == 0:
-            print(f"   ✅ Committed archive")
+        if dry_run:
+            print(f"[DRY RUN] Would run: git add + git commit 'archive: {app_name} — {outcome or 'unknown'} {emoji}'")
         else:
-            print(f"   ⚠️  Commit failed: {r.stderr.strip()}")
+            _git(["add", "-A", str(archive_dest), str(archive_root)])
+            # Stage the deletion from applications/
+            _git(["add", "-u"])
+            r = _git([
+                "commit", "-m",
+                f"archive: {app_name} — {outcome or 'unknown'} {emoji}\n\n"
+                f"Co-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>"
+            ])
+            if r.returncode == 0:
+                print(f"   ✅ Committed archive")
+            else:
+                print(f"   ⚠️  Commit failed: {r.stderr.strip()}")
 
     # Push tag
     if not args.no_tag:
-        r = _git(["push", "origin", tag])
-        if r.returncode == 0:
-            print(f"   ✅ Pushed tag {tag}")
+        if dry_run:
+            print(f"[DRY RUN] Would run: git push origin {tag}")
+        else:
+            r = _git(["push", "origin", tag])
+            if r.returncode == 0:
+                print(f"   ✅ Pushed tag {tag}")
 
     created = _parse_date(meta.get("created", ""))
     days = (datetime.now() - created).days if created else "?"

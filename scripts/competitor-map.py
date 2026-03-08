@@ -15,180 +15,19 @@ AI providers: gemini (default) | claude | openai | mistral | ollama
 """
 
 import argparse
-import json
 import os
 import sys
-import time
-import urllib.error
-import urllib.request
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    print("❌ PyYAML required: pip install pyyaml")
-    sys.exit(1)
+from lib.ai import call_ai, KEY_ENV, VALID_PROVIDERS
+from lib.common import load_env, REPO_ROOT, require_yaml
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
-
-# --- AI models ---
-GEMINI_MODEL    = "gemini-2.5-flash"
-GEMINI_FALLBACK = "gemini-2.0-flash-lite"
-CLAUDE_MODEL    = "claude-sonnet-4-6"
-CLAUDE_FALLBACK = "claude-haiku-4-5-20251001"
-OPENAI_MODEL    = "gpt-4o"
-OPENAI_FALLBACK = "gpt-4o-mini"
-OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
-MISTRAL_MODEL    = "mistral-large-latest"
-MISTRAL_FALLBACK = "mistral-small-latest"
-MISTRAL_ENDPOINT = "https://api.mistral.ai/v1/chat/completions"
-
-VALID_PROVIDERS = {"gemini", "claude", "openai", "mistral", "ollama"}
-KEY_ENV = {
-    "gemini": "GEMINI_API_KEY", "claude": "ANTHROPIC_API_KEY",
-    "openai": "OPENAI_API_KEY", "mistral": "MISTRAL_API_KEY", "ollama": None,
-}
-
-
-# ---------------------------------------------------------------------------
-# AI provider calls
-# ---------------------------------------------------------------------------
-
-def call_gemini(prompt, api_key, retries=6):
-    for model in (GEMINI_MODEL, GEMINI_FALLBACK):
-        url = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{model}:generateContent?key={api_key}"
-        )
-        payload = json.dumps({
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {"temperature": 0.4, "maxOutputTokens": 3000},
-        }).encode()
-        for attempt in range(retries):
-            req = urllib.request.Request(
-                url, data=payload, headers={"Content-Type": "application/json"}
-            )
-            try:
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    result = json.loads(resp.read())
-                return result["candidates"][0]["content"]["parts"][0]["text"]
-            except urllib.error.HTTPError as e:
-                if e.code == 429 and attempt < retries - 1:
-                    time.sleep(min(2 ** (attempt + 2), 60))
-                elif e.code == 429 and model != GEMINI_FALLBACK:
-                    break
-                else:
-                    raise
-    raise RuntimeError("Gemini rate-limited on both models")
-
-
-def call_claude(prompt, api_key, retries=6):
-    url = "https://api.anthropic.com/v1/messages"
-    headers = {
-        "x-api-key": api_key,
-        "anthropic-version": "2023-06-01",
-        "content-type": "application/json",
-    }
-    for model in (CLAUDE_MODEL, CLAUDE_FALLBACK):
-        payload = json.dumps({
-            "model": model, "max_tokens": 3000,
-            "messages": [{"role": "user", "content": prompt}],
-        }).encode()
-        for attempt in range(retries):
-            req = urllib.request.Request(url, data=payload, headers=headers)
-            try:
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    result = json.loads(resp.read())
-                return result["content"][0]["text"]
-            except urllib.error.HTTPError as e:
-                if e.code == 429 and attempt < retries - 1:
-                    time.sleep(min(2 ** (attempt + 2), 60))
-                elif e.code == 429 and model != CLAUDE_FALLBACK:
-                    break
-                else:
-                    raise
-    raise RuntimeError("Claude rate-limited on both models")
-
-
-def call_openai_compat(prompt, endpoint, api_key, models, retries=6):
-    primary, fallback = models
-    headers = {"Authorization": f"Bearer {api_key}", "content-type": "application/json"}
-    for model in (primary, fallback):
-        payload = json.dumps({
-            "model": model,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 3000, "temperature": 0.4,
-        }).encode()
-        for attempt in range(retries):
-            req = urllib.request.Request(endpoint, data=payload, headers=headers)
-            try:
-                with urllib.request.urlopen(req, timeout=120) as resp:
-                    result = json.loads(resp.read())
-                return result["choices"][0]["message"]["content"]
-            except urllib.error.HTTPError as e:
-                if e.code == 429 and attempt < retries - 1:
-                    time.sleep(min(2 ** (attempt + 2), 60))
-                elif e.code == 429 and model != fallback:
-                    break
-                else:
-                    raise
-    raise RuntimeError("API rate-limited")
-
-
-def call_ollama(prompt, retries=3):
-    host = os.environ.get("OLLAMA_HOST", "http://localhost:11434").rstrip("/")
-    model = os.environ.get("OLLAMA_MODEL", "llama3")
-    payload = json.dumps({
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "stream": False,
-    }).encode()
-    for attempt in range(retries):
-        req = urllib.request.Request(
-            f"{host}/api/chat", data=payload,
-            headers={"content-type": "application/json"},
-        )
-        try:
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                result = json.loads(resp.read())
-            return result["message"]["content"]
-        except urllib.error.URLError:
-            if attempt < retries - 1:
-                time.sleep(2 ** (attempt + 1))
-            else:
-                raise RuntimeError(f"Cannot connect to Ollama at {host}")
-
-
-def call_ai(prompt, provider, api_key):
-    if provider == "gemini":
-        return call_gemini(prompt, api_key)
-    if provider == "claude":
-        return call_claude(prompt, api_key)
-    if provider == "openai":
-        return call_openai_compat(prompt, OPENAI_ENDPOINT, api_key,
-                                   (OPENAI_MODEL, OPENAI_FALLBACK))
-    if provider == "mistral":
-        return call_openai_compat(prompt, MISTRAL_ENDPOINT, api_key,
-                                   (MISTRAL_MODEL, MISTRAL_FALLBACK))
-    if provider == "ollama":
-        return call_ollama(prompt)
-    raise ValueError(f"Unknown provider: {provider}")
+yaml = require_yaml()
 
 
 # ---------------------------------------------------------------------------
 # Context
 # ---------------------------------------------------------------------------
-
-def load_env():
-    env_path = _REPO_ROOT / ".env"
-    if not env_path.exists():
-        return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, val = line.partition("=")
-            os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
 
 
 def _read_file(path: Path, max_chars: int = 3000) -> str:

@@ -30,8 +30,7 @@ except ImportError:
     print("❌ PyYAML required: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT
 
 VALID_STAGES = [
     "phone-screen", "technical", "panel", "final", "reference-check", "offer",
@@ -128,7 +127,7 @@ def _display_timeline(app_dir: Path) -> None:
 
 
 def _display_all() -> None:
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         print("❌ No applications/ directory found")
         return

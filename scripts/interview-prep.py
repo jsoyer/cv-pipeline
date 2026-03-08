@@ -6,16 +6,15 @@ Usage:
     scripts/interview-prep.py <application-dir>
 """
 
+import argparse
 import os
 import re
 import sys
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    print("❌ pyyaml required: pip install pyyaml")
-    sys.exit(1)
+from lib.common import company_from_dirname, require_yaml
+
+yaml = require_yaml()
 
 
 def load_cv_data(data_path="data/cv.yml"):
@@ -172,18 +171,28 @@ def generate_prep(cv_data, job_text, job_sections, company, position):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: scripts/interview-prep.py <application-dir>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        prog="interview-prep.py",
+        description=(
+            "Generate interview preparation notes from job description + CV data.\n\n"
+            "Produces prep.md in the application directory with strengths, gaps, "
+            "STAR story prompts, and questions to ask."
+        ),
+    )
+    parser.add_argument(
+        "app_dir",
+        metavar="application-dir",
+        help="Path to the application directory",
+    )
+    args = parser.parse_args()
 
-    app_dir = sys.argv[1]
+    app_dir = args.app_dir
     if not os.path.isdir(app_dir):
         print(f"❌ Directory not found: {app_dir}")
         sys.exit(1)
 
     name = os.path.basename(app_dir)
-    parts = name.split("-", 2)
-    company = parts[2].replace("-", " ").title() if len(parts) > 2 else name
+    company = company_from_dirname(name)
 
     position = "Unknown"
     for f in Path(app_dir).glob("CV - *.tex"):

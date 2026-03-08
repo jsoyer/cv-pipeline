@@ -7,8 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT, load_env
 
 # ---------------------------------------------------------------------------
 # Tool checks
@@ -89,19 +88,6 @@ def check_python_module(module):
         return False
 
 
-def load_env():
-    """Load .env file into os.environ (if present)."""
-    env_path = _REPO_ROOT / ".env"
-    if not env_path.exists():
-        return False
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, _, val = line.partition("=")
-            os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
-    return True
-
-
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -149,7 +135,7 @@ def main():
     # ── .env file ─────────────────────────────────────────────────────────────
     print("🔑 Environment & API keys:")
     env_exists = load_env()
-    env_path = _REPO_ROOT / ".env"
+    env_path = REPO_ROOT / ".env"
     if env_exists:
         print(f"  {OK} .env file found ({env_path})")
     else:
@@ -170,12 +156,12 @@ def main():
     try:
         result = subprocess.run(
             ["git", "config", "user.name"],
-            capture_output=True, text=True, cwd=_REPO_ROOT
+            capture_output=True, text=True, cwd=REPO_ROOT
         )
         git_name = result.stdout.strip()
         result2 = subprocess.run(
             ["git", "config", "user.email"],
-            capture_output=True, text=True, cwd=_REPO_ROOT
+            capture_output=True, text=True, cwd=REPO_ROOT
         )
         git_email = result2.stdout.strip()
         if git_name and git_email:
@@ -188,7 +174,7 @@ def main():
         print(f"  {WARN} Could not read git config")
 
     # Check submodule
-    awesome_cv_cls = _REPO_ROOT / "awesome-cv" / "awesome-cv.cls"
+    awesome_cv_cls = REPO_ROOT / "awesome-cv" / "awesome-cv.cls"
     if awesome_cv_cls.exists():
         print(f"  {OK} awesome-cv submodule initialized")
     else:
@@ -199,10 +185,10 @@ def main():
     # ── Data files ────────────────────────────────────────────────────────────
     print("📄 Data files:")
     data_files = [
-        (_REPO_ROOT / "data" / "cv.yml",         "data/cv.yml (master CV)"),
-        (_REPO_ROOT / "data" / "cv-schema.json", "data/cv-schema.json (schema)"),
-        (_REPO_ROOT / "CV.tex",                  "CV.tex (LaTeX template)"),
-        (_REPO_ROOT / "CoverLetter.tex",          "CoverLetter.tex (CL template)"),
+        (REPO_ROOT / "data" / "cv.yml",         "data/cv.yml (master CV)"),
+        (REPO_ROOT / "data" / "cv-schema.json", "data/cv-schema.json (schema)"),
+        (REPO_ROOT / "CV.tex",                  "CV.tex (LaTeX template)"),
+        (REPO_ROOT / "CoverLetter.tex",          "CoverLetter.tex (CL template)"),
     ]
     for path, label in data_files:
         ok = path.exists()
@@ -212,7 +198,7 @@ def main():
     print()
 
     # ── Applications summary ──────────────────────────────────────────────────
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if apps_dir.exists():
         app_dirs = [d for d in apps_dir.iterdir() if d.is_dir()]
         print(f"📁 Applications: {len(app_dirs)} found")

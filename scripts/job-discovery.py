@@ -34,17 +34,14 @@ except ImportError:
     print("Missing deps: pip install pyyaml")
     sys.exit(1)
 
+from lib.common import REPO_ROOT, USER_AGENT
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
 
-_REPO_ROOT = Path(__file__).parent.parent
-
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": USER_AGENT,
     "Accept": "application/json, text/html, */*",
     "Accept-Language": "en-US,en;q=0.9,fr;q=0.8",
 }
@@ -60,7 +57,7 @@ DIVIDER = "-" * 65
 
 def load_config():
     """Load data/job-discovery.yml."""
-    config_path = _REPO_ROOT / "data" / "job-discovery.yml"
+    config_path = REPO_ROOT / "data" / "job-discovery.yml"
     if not config_path.exists():
         print(f"Config not found: {config_path}")
         sys.exit(1)
@@ -74,7 +71,7 @@ def load_config():
 
 def load_seen(config):
     """Load the set of already-seen job IDs from the seen_jobs_file."""
-    seen_file = _REPO_ROOT / config.get("seen_jobs_file", ".job-discovery-seen.json")
+    seen_file = REPO_ROOT / config.get("seen_jobs_file", ".job-discovery-seen.json")
     if seen_file.exists():
         try:
             with open(seen_file, encoding="utf-8") as f:
@@ -86,7 +83,7 @@ def load_seen(config):
 
 def save_seen(config, seen):
     """Persist seen job IDs back to disk."""
-    seen_file = _REPO_ROOT / config.get("seen_jobs_file", ".job-discovery-seen.json")
+    seen_file = REPO_ROOT / config.get("seen_jobs_file", ".job-discovery-seen.json")
     try:
         with open(seen_file, "w", encoding="utf-8") as f:
             json.dump(seen, f, indent=2)
@@ -96,7 +93,7 @@ def save_seen(config, seen):
 
 def reset_seen(config):
     """Clear the seen jobs file."""
-    seen_file = _REPO_ROOT / config.get("seen_jobs_file", ".job-discovery-seen.json")
+    seen_file = REPO_ROOT / config.get("seen_jobs_file", ".job-discovery-seen.json")
     if seen_file.exists():
         seen_file.unlink()
         print(f"Cleared seen jobs file: {seen_file.name}")
@@ -221,10 +218,8 @@ def fetch_ashby(company, config):
     Fetch jobs from Ashby API for companies with ashby_id.
     Returns list of normalised job dicts.
 
-    TODO: Ashby's public jobs API endpoint is:
-      POST https://api.ashbyhq.com/posting-api/job-board/{ashby_id}
-      with Content-Type: application/json and empty body {}
-    Requires ashby_id to be set on the company entry.
+    Uses POST https://api.ashbyhq.com/posting-api/job-board/{ashby_id}
+    with an empty JSON body. Requires ashby_id on the company entry.
     """
     ashby_id = company.get("ashby_id")
     if not ashby_id:
@@ -278,7 +273,7 @@ def fetch_ashby(company, config):
 def fetch_indeed(config):
     """
     Indeed scraping is unreliable due to bot-detection.
-    TODO: Implement when a stable Indeed jobs API becomes available.
+    Indeed: no stable public API available.
     """
     print("   Warning: Indeed scraping is unreliable — disabled")
     return []
@@ -498,7 +493,7 @@ def auto_apply(jobs):
         try:
             result = subprocess.run(
                 cmd,
-                cwd=str(_REPO_ROOT),
+                cwd=str(REPO_ROOT),
                 capture_output=True,
                 text=True,
                 timeout=120,

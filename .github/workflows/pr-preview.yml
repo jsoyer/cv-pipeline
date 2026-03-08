@@ -13,6 +13,7 @@ jobs:
   preview:
     name: 📄 PDF Preview
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     container:
       image: texlive/texlive:latest
 
@@ -25,7 +26,9 @@ jobs:
 
       - name: 🔍 Find changed applications
         id: changes
+        shell: bash
         run: |
+          set -euo pipefail
           # Get list of changed .tex files in applications/
           CHANGED=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.sha }} -- 'applications/**/*.tex' 2>/dev/null || echo "")
           if [ -z "$CHANGED" ]; then
@@ -39,7 +42,9 @@ jobs:
 
       - name: 📝 Add DRAFT watermark
         if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
         run: |
+          set -euo pipefail
           for dir in ${{ steps.changes.outputs.dirs }}; do
             for f in "$dir"/*.tex; do
               [ -f "$f" ] || continue
@@ -49,13 +54,17 @@ jobs:
 
       - name: 🔨 Build master CV
         if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
         run: |
+          set -euo pipefail
           export TEXINPUTS="$(pwd)/awesome-cv/:"
           xelatex -output-directory=. "CV.tex"
 
       - name: 🔨 Build application PDFs
         if: steps.changes.outputs.has_changes == 'true'
+        shell: bash
         run: |
+          set -euo pipefail
           export TEXINPUTS="$(pwd)/awesome-cv/:"
           for dir in ${{ steps.changes.outputs.dirs }}; do
             echo "Building: $dir"
@@ -68,7 +77,9 @@ jobs:
       - name: 📊 Score applications
         if: steps.changes.outputs.has_changes == 'true'
         id: score
+        shell: bash
         run: |
+          set -euo pipefail
           pip install pyyaml -q
           mkdir -p /tmp/ats-results
 
@@ -82,18 +93,27 @@ jobs:
             fi
 
             # Score tailored CV (uses .tex files in app dir)
-            python3 scripts/ats-score.py "$dir" --json > "/tmp/ats-results/${APP_NAME}-tailored.json" 2>/dev/null || echo '{"score":0,"found_count":0,"missing_count":0,"total_keywords":0,"missing":[]}' > "/tmp/ats-results/${APP_NAME}-tailored.json"
+            if ! python3 scripts/ats-score.py "$dir" --json > "/tmp/ats-results/${APP_NAME}-tailored.json" 2>&1; then
+              echo "Warning: ATS scoring failed for ${APP_NAME} (tailored)"
+              echo '{"score":0,"found_count":0,"missing_count":0,"total_keywords":0,"missing":[]}' > "/tmp/ats-results/${APP_NAME}-tailored.json"
+            fi
 
             # Score master CV against same job.txt
             MASTER_DIR=$(mktemp -d)
             cp CV.tex "$MASTER_DIR/"
             cp "$JOB_FILE" "$MASTER_DIR/job.txt"
-            python3 scripts/ats-score.py "$MASTER_DIR" --json > "/tmp/ats-results/${APP_NAME}-master.json" 2>/dev/null || echo '{"score":0,"found_count":0,"missing_count":0,"total_keywords":0,"missing":[]}' > "/tmp/ats-results/${APP_NAME}-master.json"
+            if ! python3 scripts/ats-score.py "$MASTER_DIR" --json > "/tmp/ats-results/${APP_NAME}-master.json" 2>&1; then
+              echo "Warning: ATS scoring failed for ${APP_NAME} (master)"
+              echo '{"score":0,"found_count":0,"missing_count":0,"total_keywords":0,"missing":[]}' > "/tmp/ats-results/${APP_NAME}-master.json"
+            fi
             rm -rf "$MASTER_DIR"
 
             # Score cover letter (if coverletter.yml exists)
             if [ -f "$dir/coverletter.yml" ]; then
-              python3 scripts/cl-score.py "$dir" --json > "/tmp/ats-results/${APP_NAME}-cl.json" 2>/dev/null || echo '{}' > "/tmp/ats-results/${APP_NAME}-cl.json"
+              if ! python3 scripts/cl-score.py "$dir" --json > "/tmp/ats-results/${APP_NAME}-cl.json" 2>&1; then
+                echo "Warning: Cover letter scoring failed for ${APP_NAME}"
+                echo '{}' > "/tmp/ats-results/${APP_NAME}-cl.json"
+              fi
             fi
           done
 

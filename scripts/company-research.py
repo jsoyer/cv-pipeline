@@ -19,8 +19,10 @@ Usage:
     scripts/company-research.py <application-dir> --json
 """
 
+from __future__ import annotations
+
+import argparse
 import json
-import os
 import re
 import sys
 import xml.etree.ElementTree as ET
@@ -41,15 +43,10 @@ except ImportError:
     print("❌ Missing deps: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT, USER_AGENT
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/120.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": USER_AGENT,
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
 }
@@ -309,12 +306,29 @@ def update_meta_yml(meta_path: Path, updates: dict) -> None:
 
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: scripts/company-research.py <application-dir> [--json]")
-        sys.exit(0)
+    parser = argparse.ArgumentParser(
+        prog="company-research.py",
+        description=(
+            "Company Research — Fetch company intelligence from public sources.\n\n"
+            "Sources: company website, Google News RSS, StackShare, Crunchbase. "
+            "Writes company-research.md and updates meta.yml. No API key required."
+        ),
+    )
+    parser.add_argument(
+        "app_dir",
+        metavar="application-dir",
+        help="Path to the application directory (must contain meta.yml with a 'company' field)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_mode",
+        help="Also print the full result as JSON after writing files",
+    )
+    args = parser.parse_args()
 
-    app_dir = Path(sys.argv[1])
-    json_mode = "--json" in sys.argv
+    app_dir = Path(args.app_dir)
+    json_mode = args.json_mode
 
     if not app_dir.is_dir():
         print(f"❌ Directory not found: {app_dir}")

@@ -10,6 +10,7 @@ Usage:
     scripts/visual-diff.py <pdf1> <pdf2>
 """
 
+import argparse
 import os
 import subprocess
 import sys
@@ -116,11 +117,30 @@ def compare_images(img1, img2, diff_output):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage:")
-        print("  scripts/visual-diff.py <application-dir>")
-        print("  scripts/visual-diff.py <pdf1> <pdf2>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        description="PDF Visual Regression — Pixel-level comparison of two PDF versions. "
+                    "Converts PDF pages to images, then highlights visual differences. "
+                    "Requires: ImageMagick (convert + compare commands).",
+        epilog=(
+            "Modes:\n"
+            "  One argument:   compare master CV.pdf against the application's CV PDF\n"
+            "  Two arguments:  compare pdf1 directly against pdf2"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "path1",
+        metavar="application-dir|pdf1",
+        help="Application directory (single-arg mode) or first PDF path (two-arg mode)",
+    )
+    parser.add_argument(
+        "pdf2",
+        metavar="pdf2",
+        nargs="?",
+        default=None,
+        help="Second PDF path (two-arg mode only)",
+    )
+    args = parser.parse_args()
 
     if not check_imagemagick():
         print("❌ ImageMagick not found.")
@@ -128,8 +148,8 @@ def main():
         sys.exit(1)
 
     # Determine mode: app dir or two PDFs
-    if len(sys.argv) == 2:
-        app_dir = Path(sys.argv[1])
+    if args.pdf2 is None:
+        app_dir = Path(args.path1)
         if not app_dir.is_dir():
             print(f"❌ Not a directory: {app_dir}")
             sys.exit(1)
@@ -148,15 +168,12 @@ def main():
 
         pdf1 = master_cv
         pdf2 = app_cv[0]
-    elif len(sys.argv) >= 3:
-        pdf1 = Path(sys.argv[1])
-        pdf2 = Path(sys.argv[2])
+    else:
+        pdf1 = Path(args.path1)
+        pdf2 = Path(args.pdf2)
         if not pdf1.exists() or not pdf2.exists():
             print(f"❌ File not found: {pdf1 if not pdf1.exists() else pdf2}")
             sys.exit(1)
-    else:
-        print("Usage: scripts/visual-diff.py <app-dir> or <pdf1> <pdf2>")
-        sys.exit(1)
 
     print(f"🔍 Visual diff:")
     print(f"   A: {pdf1}")

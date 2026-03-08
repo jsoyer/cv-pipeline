@@ -23,11 +23,9 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-try:
-    import yaml
-except ImportError:
-    print("❌ pyyaml required: pip install pyyaml")
-    sys.exit(1)
+from lib.common import require_yaml, load_env
+
+yaml = require_yaml()
 
 
 API_BASE = "https://api.linkedin.com/v2"
@@ -177,6 +175,7 @@ def push_to_linkedin(profile, token):
 
 
 def main():
+    load_env()
     parser = argparse.ArgumentParser(description="Sync CV data to LinkedIn")
     parser.add_argument("-d", "--data", default="data/cv.yml",
                         help="YAML data file (default: data/cv.yml)")

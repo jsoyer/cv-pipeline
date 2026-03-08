@@ -16,37 +16,14 @@ Usage:
     scripts/ats-score.py <application-dir> --json
 """
 
+import argparse
 import json
 import os
 import re
 import sys
 from collections import Counter
 
-STOP_WORDS = frozenset({
-    "a", "ab", "able", "about", "above", "across", "after", "again", "all",
-    "also", "am", "an", "and", "any", "are", "as", "at", "back", "be",
-    "because", "been", "before", "being", "between", "both", "but", "by",
-    "can", "come", "could", "day", "de", "did", "do", "does", "each",
-    "even", "every", "few", "first", "for", "from", "further", "get",
-    "great", "had", "has", "have", "he", "help", "her", "here", "high",
-    "him", "his", "how", "i", "if", "in", "including", "into", "is", "it",
-    "its", "just", "know", "la", "last", "le", "les", "like", "long",
-    "look", "make", "many", "may", "me", "might", "more", "most", "much",
-    "must", "my", "need", "new", "no", "nor", "not", "now", "of", "on",
-    "one", "only", "or", "other", "our", "out", "over", "own", "part",
-    "plus", "re", "role", "same", "she", "should", "so", "some", "such",
-    "take", "than", "that", "the", "their", "them", "then", "there",
-    "these", "they", "this", "those", "through", "time", "to", "too",
-    "two", "under", "up", "upon", "us", "use", "used", "using", "very",
-    "want", "was", "way", "we", "well", "were", "what", "when", "where",
-    "which", "while", "who", "whom", "why", "will", "with", "work",
-    "working", "would", "year", "years", "you", "your",
-    # Job posting filler
-    "ability", "apply", "bonus", "candidate", "company", "description",
-    "equal", "employer", "experience", "job", "looking", "opportunity",
-    "position", "preferred", "qualifications", "required", "requirements",
-    "responsibilities", "team",
-})
+from lib.common import STOP_WORDS
 
 # Patterns to detect job description sections
 SECTION_PATTERNS = {
@@ -179,12 +156,28 @@ def categorize_keyword(kw):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: scripts/ats-score.py <application-dir> [--json]")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(
+        prog="ats-score.py",
+        description=(
+            "Advanced ATS Keyword Scoring — Compare job description against your CV.\n\n"
+            "Section-aware parsing with weighted scoring. No API key required."
+        ),
+    )
+    parser.add_argument(
+        "app_dir",
+        metavar="application-dir",
+        help="Path to the application directory (must contain job.txt and a CV .tex file)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_mode",
+        help="Output results as JSON (exits 1 if score < 60)",
+    )
+    args = parser.parse_args()
 
-    app_dir = sys.argv[1]
-    json_mode = "--json" in sys.argv
+    app_dir = args.app_dir
+    json_mode = args.json_mode
 
     if not os.path.isdir(app_dir):
         print(f"❌ Directory not found: {app_dir}")

@@ -15,6 +15,7 @@ Usage:
     scripts/cl-score.py <application-dir> --json
 """
 
+import argparse
 import importlib.util
 import json
 import os
@@ -22,14 +23,11 @@ import re
 import sys
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    print("❌ PyYAML not installed. Run: pip install pyyaml")
-    sys.exit(1)
-
 _SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+
+from lib.common import REPO_ROOT, require_yaml
+
+yaml = require_yaml()
 
 # ── Import helpers from ats-score.py ─────────────────────────────────────────
 _ats_spec = importlib.util.spec_from_file_location(
@@ -258,12 +256,29 @@ def score_tone_match(cl_text: str, job_text: str) -> dict:
 
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
-        print("Usage: scripts/cl-score.py <application-dir> [--json]")
-        sys.exit(0)
+    parser = argparse.ArgumentParser(
+        prog="cl-score.py",
+        description=(
+            "Cover Letter Scorer — Score cover letter quality against job description.\n\n"
+            "Scoring: Keyword Coverage (40 pts), Personalization (25 pts), "
+            "Structure (20 pts), Tone Match (15 pts). No API key required."
+        ),
+    )
+    parser.add_argument(
+        "app_dir",
+        metavar="application-dir",
+        help="Path to the application directory (must contain coverletter.yml and job.txt)",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        dest="json_mode",
+        help="Output results as JSON (exits 1 if score < 60)",
+    )
+    args = parser.parse_args()
 
-    app_dir = Path(sys.argv[1])
-    json_mode = "--json" in sys.argv
+    app_dir = Path(args.app_dir)
+    json_mode = args.json_mode
 
     if not app_dir.is_dir():
         print(f"❌ Directory not found: {app_dir}")

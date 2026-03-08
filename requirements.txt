@@ -1,0 +1,12 @@
+# Python 3.8+ required
+pyyaml>=6.0,<7.0
+requests>=2.28,<3.0
+beautifulsoup4>=4.12,<5.0
+# Optional: TUI interface
+# textual>=0.40
+# Optional: file watcher
+# watchdog>=3.0
+
+# Development / testing
+# pytest>=7.0
+# pytest-cov>=4.0

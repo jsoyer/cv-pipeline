@@ -30,14 +30,10 @@ try:
 except ImportError:
     HAS_YAML = False
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import load_meta as _lib_load_meta, REPO_ROOT, USER_AGENT
 
 HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    ),
+    "User-Agent": USER_AGENT,
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "en-US,en;q=0.5",
 }
@@ -78,16 +74,11 @@ DEAD_REDIRECT_PATTERNS = [
 # ---------------------------------------------------------------------------
 
 def load_meta(app_dir: Path) -> dict:
+    # Soft fallback: lib.common.load_meta calls require_yaml() which hard-exits
+    # when PyYAML is missing. Guard here so URL checking still works without it.
     if not HAS_YAML:
         return {}
-    meta_path = app_dir / "meta.yml"
-    if not meta_path.exists():
-        return {}
-    try:
-        with open(meta_path, encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
-        return {}
+    return _lib_load_meta(app_dir)
 
 
 def check_url(original_url: str) -> dict:
@@ -196,7 +187,7 @@ def run(name_filter: str = "", json_mode: bool = False) -> int:
         print("❌ requests not installed: pip install requests")
         return 1
 
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         print("❌ No applications/ directory found")
         return 1

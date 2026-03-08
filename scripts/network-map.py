@@ -27,8 +27,7 @@ except ImportError:
     print("❌ PyYAML required: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT
 
 
 # ---------------------------------------------------------------------------
@@ -274,7 +273,7 @@ def main():
     parser.add_argument("--json", action="store_true", help="Output JSON data")
     args = parser.parse_args()
 
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         print("❌ applications/ directory not found")
         return 1
@@ -294,7 +293,7 @@ def main():
 
     md = build_markdown(nodes)
 
-    out_path = _REPO_ROOT / "network-map.md"
+    out_path = REPO_ROOT / "network-map.md"
     out_path.write_text(md, encoding="utf-8")
     print(f"✅ Saved to {out_path}")
 

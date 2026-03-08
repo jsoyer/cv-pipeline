@@ -20,8 +20,7 @@ except ImportError:
     print("❌ PyYAML required: pip install pyyaml")
     sys.exit(1)
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT
 
 MONTH_MAP = {
     "jan": "01", "feb": "02", "mar": "03", "apr": "04",
@@ -295,7 +294,7 @@ def main():
     parser.add_argument("-o", "--output", default="cv.json",      help="Output JSON file")
     args = parser.parse_args()
 
-    data_path = _REPO_ROOT / args.data
+    data_path = REPO_ROOT / args.data
     if not data_path.exists():
         print(f"❌ Data file not found: {data_path}")
         sys.exit(1)
@@ -306,7 +305,7 @@ def main():
     print(f"📄 Converting {args.data} → JSON Resume...")
     resume = convert(data)
 
-    out_path = _REPO_ROOT / args.output
+    out_path = REPO_ROOT / args.output
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(resume, f, indent=2, ensure_ascii=False)
         f.write("\n")

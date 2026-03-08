@@ -73,6 +73,28 @@ jobs:
               return days > STALE_DAYS;
             });
 
+            // Ensure 'follow-up' label exists
+            try {
+              await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'follow-up',
+              });
+            } catch (e) {
+              if (e.status === 404) {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: 'follow-up',
+                  color: 'fbca04',
+                  description: 'Application follow-up reminder',
+                });
+                console.log('✅ Created label: follow-up');
+              } else {
+                throw e;
+              }
+            }
+
             // Get existing follow-up issues
             const { data: issues } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,

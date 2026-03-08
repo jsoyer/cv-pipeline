@@ -13,6 +13,8 @@ Options:
     --json        Output JSON
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import re
@@ -21,8 +23,7 @@ from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+from lib.common import REPO_ROOT, STOP_WORDS
 
 # Section header keywords → canonical category
 CATEGORY_MAP = {
@@ -40,15 +41,6 @@ CATEGORY_MAP = {
     "stories":          "STAR Stories",
     "behavioral":       "STAR Stories",
 }
-
-STOP_WORDS = frozenset({
-    "a", "an", "the", "and", "or", "but", "in", "on", "at", "to", "for",
-    "of", "with", "by", "is", "are", "was", "were", "be", "been", "being",
-    "have", "has", "had", "do", "does", "did", "will", "would", "could",
-    "should", "may", "might", "can", "your", "our", "their", "its",
-    "this", "that", "these", "those", "what", "how", "why", "when",
-    "where", "who", "which",
-})
 
 QUESTION_WORDS = frozenset({
     "what", "how", "why", "when", "where", "who", "which",
@@ -194,7 +186,7 @@ def main():
     parser.add_argument("--json", action="store_true", help="Output JSON")
     args = parser.parse_args()
 
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         print("❌ No applications/ directory found")
         sys.exit(1)
@@ -273,7 +265,7 @@ def main():
         sections_md.append("")
 
     content = "\n".join(sections_md)
-    out_path = _REPO_ROOT / "question-bank.md"
+    out_path = REPO_ROOT / "question-bank.md"
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(content)
     print(f"\n✅ Saved to {out_path}")

@@ -14,6 +14,9 @@ Usage:
     scripts/generate-dashboard.py [--output-dir DIR] [--no-gh] [--json-data]
 """
 
+from __future__ import annotations
+
+import argparse
 import json
 import os
 import re
@@ -22,14 +25,9 @@ import sys
 from datetime import date, datetime
 from pathlib import Path
 
-try:
-    import yaml
-except ImportError:
-    print("❌ PyYAML not installed. Run: pip install pyyaml")
-    sys.exit(1)
+from lib.common import REPO_ROOT, require_yaml
 
-_SCRIPT_DIR = Path(__file__).parent
-_REPO_ROOT = _SCRIPT_DIR.parent
+yaml = require_yaml()
 
 
 # ── Data collection ────────────────────────────────────────────────────────────
@@ -41,7 +39,7 @@ def get_pr_info(name: str) -> dict:
             ["gh", "pr", "list", "--head", f"apply/{name}", "--state", "all",
              "--json", "state,url,labels,createdAt,mergedAt",
              "--jq", "if length > 0 then .[0] | tojson else \"\" end"],
-            capture_output=True, text=True, timeout=10, cwd=_REPO_ROOT,
+            capture_output=True, text=True, timeout=10, cwd=REPO_ROOT,
         )
         if result.stdout.strip():
             return json.loads(result.stdout.strip())
@@ -58,7 +56,7 @@ def get_ats_score(app_dir: Path) -> float | None:
     try:
         result = subprocess.run(
             ["python3", "scripts/ats-score.py", str(app_dir), "--json"],
-            capture_output=True, text=True, timeout=20, cwd=_REPO_ROOT,
+            capture_output=True, text=True, timeout=20, cwd=REPO_ROOT,
         )
         if result.returncode in (0, 1) and result.stdout.strip():
             data = json.loads(result.stdout.strip())
@@ -93,7 +91,7 @@ def get_stage(pr: dict, meta: dict) -> str:
 
 def collect_data(no_gh: bool = False) -> dict:
     """Collect all application data."""
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if not apps_dir.exists():
         return {"applications": [], "generated": str(date.today())}
 
@@ -493,26 +491,38 @@ sorted.forEach(app => {
 
 
 def main():
-    args = sys.argv[1:]
-    output_dir = _REPO_ROOT / "docs"
-    no_gh = False
-    json_data = False
-
-    i = 0
-    while i < len(args):
-        arg = args[i]
-        if arg == "--output-dir" and i + 1 < len(args):
-            output_dir = Path(args[i + 1])
-            i += 1
-        elif arg == "--no-gh":
-            no_gh = True
-        elif arg == "--json-data":
-            json_data = True
-        i += 1
+    parser = argparse.ArgumentParser(
+        description="Generate Dashboard — Build a self-contained HTML dashboard of application stats. "
+                    "Features: funnel doughnut chart, ATS scores bar chart, "
+                    "applications per month bar chart, and active applications table."
+    )
+    parser.add_argument(
+        "--output-dir",
+        metavar="DIR",
+        dest="output_dir",
+        default=str(REPO_ROOT / "docs"),
+        help="Directory to write index.html into (default: docs/)",
+    )
+    parser.add_argument(
+        "--no-gh",
+        action="store_true",
+        dest="no_gh",
+        help="Skip GitHub CLI queries (faster, offline-safe)",
+    )
+    parser.add_argument(
+        "--json-data",
+        action="store_true",
+        dest="json_data",
+        help="Print collected data as JSON and exit (no HTML generated)",
+    )
+    parsed = parser.parse_args()
+    output_dir = Path(parsed.output_dir)
+    no_gh = parsed.no_gh
+    json_data = parsed.json_data
 
     print("📊 Generating dashboard...")
 
-    apps_dir = _REPO_ROOT / "applications"
+    apps_dir = REPO_ROOT / "applications"
     if apps_dir.exists():
         count = sum(1 for d in apps_dir.iterdir() if d.is_dir() and (d / "meta.yml").exists())
         print(f"   Collecting data for {count} application(s)...")
