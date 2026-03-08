@@ -33,24 +33,22 @@ jobs:
         run: |
           set -euo pipefail
           # TeX Live 2026 renamed sourcesanspro to sourcesans (SourceSans3-*)
-          # Awesome-CV cls references SourceSansPro-* — create symlinks
-          FONTDIR=$(kpsewhich --var-value TEXMFLOCAL)/fonts/opentype/custom
+          # Awesome-CV cls references SourceSansPro-* — create aliases
+          FONTDIR="/usr/local/share/fonts/sourcesanspro-compat"
           mkdir -p "$FONTDIR"
-          # Find where SourceSans3 fonts live
-          S3DIR=$(dirname "$(kpsewhich SourceSans3-Regular.otf 2>/dev/null || echo '')" 2>/dev/null || true)
-          if [ -n "$S3DIR" ] && [ -d "$S3DIR" ]; then
-            for f in "$S3DIR"/SourceSans3-*; do
+          # Find SourceSans3 font files
+          S3=$(find /usr/local/texlive -name "SourceSans3-Regular.otf" 2>/dev/null | head -1)
+          if [ -n "$S3" ]; then
+            S3DIR=$(dirname "$S3")
+            for f in "$S3DIR"/SourceSans3-*.otf; do
               [ -f "$f" ] || continue
-              base=$(basename "$f")
-              target="${base/SourceSans3/SourceSansPro}"
-              ln -sf "$f" "$FONTDIR/$target"
+              target="$FONTDIR/$(basename "${f/SourceSans3/SourceSansPro}")"
+              cp "$f" "$target"
             done
-            texhash "$FONTDIR/.." 2>/dev/null || true
-            fc-cache -f "$FONTDIR"
-          else
-            echo "⚠️  SourceSans3 fonts not found, trying tlmgr install"
-            tlmgr install sourcesanspro 2>/dev/null || true
           fi
+          fc-cache -f "$FONTDIR"
+          # Verify
+          fc-list | grep -i "SourceSansPro" | head -3 || echo "⚠️  Fonts not found after install"
 
       - name: 🔧 Render YAML to LaTeX
         shell: bash
@@ -200,24 +198,22 @@ jobs:
         run: |
           set -euo pipefail
           # TeX Live 2026 renamed sourcesanspro to sourcesans (SourceSans3-*)
-          # Awesome-CV cls references SourceSansPro-* — create symlinks
-          FONTDIR=$(kpsewhich --var-value TEXMFLOCAL)/fonts/opentype/custom
+          # Awesome-CV cls references SourceSansPro-* — create aliases
+          FONTDIR="/usr/local/share/fonts/sourcesanspro-compat"
           mkdir -p "$FONTDIR"
-          # Find where SourceSans3 fonts live
-          S3DIR=$(dirname "$(kpsewhich SourceSans3-Regular.otf 2>/dev/null || echo '')" 2>/dev/null || true)
-          if [ -n "$S3DIR" ] && [ -d "$S3DIR" ]; then
-            for f in "$S3DIR"/SourceSans3-*; do
+          # Find SourceSans3 font files
+          S3=$(find /usr/local/texlive -name "SourceSans3-Regular.otf" 2>/dev/null | head -1)
+          if [ -n "$S3" ]; then
+            S3DIR=$(dirname "$S3")
+            for f in "$S3DIR"/SourceSans3-*.otf; do
               [ -f "$f" ] || continue
-              base=$(basename "$f")
-              target="${base/SourceSans3/SourceSansPro}"
-              ln -sf "$f" "$FONTDIR/$target"
+              target="$FONTDIR/$(basename "${f/SourceSans3/SourceSansPro}")"
+              cp "$f" "$target"
             done
-            texhash "$FONTDIR/.." 2>/dev/null || true
-            fc-cache -f "$FONTDIR"
-          else
-            echo "⚠️  SourceSans3 fonts not found, trying tlmgr install"
-            tlmgr install sourcesanspro 2>/dev/null || true
           fi
+          fc-cache -f "$FONTDIR"
+          # Verify
+          fc-list | grep -i "SourceSansPro" | head -3 || echo "⚠️  Fonts not found after install"
 
       - name: 🔒 Build PDF/A variant
         shell: bash
