@@ -21,13 +21,42 @@ jobs:
         with:
           submodules: recursive
 
+      - name: 📦 Install Python dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null 2>&1
+          pip3 install pyyaml --break-system-packages
+
+      - name: 🔗 Fix font symlinks (SourceSansPro -> SourceSans3)
+        shell: bash
+        run: |
+          set -euo pipefail
+          FONTDIR="awesome-cv/fonts"
+          if [ -d "$FONTDIR" ]; then
+            cd "$FONTDIR"
+            for f in SourceSansPro-*; do
+              [ -f "$f" ] || continue
+              target="${f/SourceSansPro/SourceSans3}"
+              [ -f "$target" ] || ln -s "$f" "$target"
+            done
+            cd - > /dev/null
+          fi
+
+      - name: 🔧 Render YAML to LaTeX
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/render.py -d data/cv.yml -o CV.tex
+          python3 scripts/render.py -d data/coverletter.yml --cv-data data/cv.yml -o CoverLetter.tex
+
       - name: 🔨 Build master CV & cover letter
         shell: bash
         run: |
           set -euo pipefail
           export TEXINPUTS="$(pwd)/awesome-cv/:"
-          xelatex -output-directory=. "CV.tex"
-          xelatex -output-directory=. "CoverLetter.tex"
+          xelatex -interaction=nonstopmode -output-directory=. CV.tex
+          xelatex -interaction=nonstopmode -output-directory=. CoverLetter.tex
 
       - name: 🎯 Build all applications
         shell: bash
@@ -39,7 +68,7 @@ jobs:
             echo "Building: $dir"
             for f in "$dir"*.tex; do
               [ -f "$f" ] || continue
-              xelatex -output-directory="$dir" "$f"
+              xelatex -interaction=nonstopmode -output-directory="$dir" "$f"
             done
           done
 
@@ -50,7 +79,6 @@ jobs:
           ERRORS=""
           for f in applications/**/*.tex; do
             [ -f "$f" ] || continue
-            # Skip master templates (only check tailored files)
             basename="$(basename "$f")"
             if echo "$f" | grep -q "applications/"; then
               for pattern in '\[Company\]' '\[Position Title\]' 'Hiring Manager' 'Company Name'; do
@@ -72,14 +100,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          apt-get update -qq && apt-get install -y -qq aspell aspell-en > /dev/null 2>&1
+          apt-get install -y -qq aspell aspell-en > /dev/null 2>&1
           ERRORS=""
           for f in $(find . -name "*.tex" -not -path "./awesome-cv/*"); do
-            # Strip LaTeX commands, then spell check
             MISSPELLED=$(cat "$f" \
               | sed 's/\\[a-zA-Z]*{//g; s/[{}\\%$]//g' \
-              | aspell --lang=en --personal=./.aspell.en.pws list \
-              | sort -u)
+              | aspell --lang=en --personal=./.aspell.en.pws list 2>/dev/null \
+              | sort -u) || true
             if [ -n "$MISSPELLED" ]; then
               ERRORS="${ERRORS}  ⚠️  $f: $(echo $MISSPELLED | tr '\n' ', ')\n"
             fi
@@ -132,10 +159,12 @@ jobs:
           path: "*.pdf"
 
       - name: 📤 Upload application PDFs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: application-pdfs
           path: "applications/**/*.pdf"
+          if-no-files-found: ignore
 
   variants:
     name: 📄 Build variants (PDF/A + French)
@@ -157,16 +186,31 @@ jobs:
           apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null 2>&1
           pip3 install pyyaml --break-system-packages
 
+      - name: 🔗 Fix font symlinks (SourceSansPro -> SourceSans3)
+        shell: bash
+        run: |
+          set -euo pipefail
+          FONTDIR="awesome-cv/fonts"
+          if [ -d "$FONTDIR" ]; then
+            cd "$FONTDIR"
+            for f in SourceSansPro-*; do
+              [ -f "$f" ] || continue
+              target="${f/SourceSansPro/SourceSans3}"
+              [ -f "$target" ] || ln -s "$f" "$target"
+            done
+            cd - > /dev/null
+          fi
+
       - name: 🔒 Build PDF/A variant
         shell: bash
         run: |
           set -euo pipefail
           export TEXINPUTS="$(pwd)/awesome-cv/:"
           python3 scripts/render.py -d data/cv.yml -o CV-pdfa.tex --pdfa
-          xelatex -output-directory=. CV-pdfa.tex
+          xelatex -interaction=nonstopmode -output-directory=. CV-pdfa.tex
           if [ -f data/coverletter.yml ]; then
-            python3 scripts/render.py -d data/coverletter.yml -o CoverLetter-pdfa.tex --pdfa
-            xelatex -output-directory=. CoverLetter-pdfa.tex
+            python3 scripts/render.py -d data/coverletter.yml --cv-data data/cv.yml -o CoverLetter-pdfa.tex --pdfa
+            xelatex -interaction=nonstopmode -output-directory=. CoverLetter-pdfa.tex
           fi
 
       - name: 🌐 Build French variant
@@ -176,7 +220,7 @@ jobs:
           set -euo pipefail
           export TEXINPUTS="$(pwd)/awesome-cv/:"
           python3 scripts/render.py -d data/cv.yml -o CV-fr.tex -l fr
-          xelatex -output-directory=. CV-fr.tex
+          xelatex -interaction=nonstopmode -output-directory=. CV-fr.tex
 
       - name: 📤 Upload variant PDFs
         uses: actions/upload-artifact@v4
@@ -186,3 +230,4 @@ jobs:
             CV-pdfa.pdf
             CoverLetter-pdfa.pdf
             CV-fr.pdf
+          if-no-files-found: ignore
