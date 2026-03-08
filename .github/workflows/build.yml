@@ -33,22 +33,13 @@ jobs:
         run: |
           set -euo pipefail
           # TeX Live 2026 renamed sourcesanspro to sourcesans (SourceSans3-*)
-          # Awesome-CV cls references SourceSansPro-* — create aliases
-          FONTDIR="/usr/local/share/fonts/sourcesanspro-compat"
-          mkdir -p "$FONTDIR"
-          # Find SourceSans3 font files
-          S3=$(find /usr/local/texlive -name "SourceSans3-Regular.otf" 2>/dev/null | head -1)
-          if [ -n "$S3" ]; then
-            S3DIR=$(dirname "$S3")
-            for f in "$S3DIR"/SourceSans3-*.otf; do
-              [ -f "$f" ] || continue
-              target="$FONTDIR/$(basename "${f/SourceSans3/SourceSansPro}")"
-              cp "$f" "$target"
-            done
+          # Awesome-CV cls references SourceSansPro-* — patch cls to use new names
+          if ! fc-list | grep -qi "SourceSansPro"; then
+            sed -i 's/SourceSansPro/SourceSans3/g' awesome-cv/awesome-cv.cls
+            echo "✅ Patched awesome-cv.cls: SourceSansPro -> SourceSans3"
+          else
+            echo "✅ SourceSansPro fonts available, no patch needed"
           fi
-          fc-cache -f "$FONTDIR"
-          # Verify
-          fc-list | grep -i "SourceSansPro" | head -3 || echo "⚠️  Fonts not found after install"
 
       - name: 🔧 Render YAML to LaTeX
         shell: bash
@@ -198,22 +189,13 @@ jobs:
         run: |
           set -euo pipefail
           # TeX Live 2026 renamed sourcesanspro to sourcesans (SourceSans3-*)
-          # Awesome-CV cls references SourceSansPro-* — create aliases
-          FONTDIR="/usr/local/share/fonts/sourcesanspro-compat"
-          mkdir -p "$FONTDIR"
-          # Find SourceSans3 font files
-          S3=$(find /usr/local/texlive -name "SourceSans3-Regular.otf" 2>/dev/null | head -1)
-          if [ -n "$S3" ]; then
-            S3DIR=$(dirname "$S3")
-            for f in "$S3DIR"/SourceSans3-*.otf; do
-              [ -f "$f" ] || continue
-              target="$FONTDIR/$(basename "${f/SourceSans3/SourceSansPro}")"
-              cp "$f" "$target"
-            done
+          # Awesome-CV cls references SourceSansPro-* — patch cls to use new names
+          if ! fc-list | grep -qi "SourceSansPro"; then
+            sed -i 's/SourceSansPro/SourceSans3/g' awesome-cv/awesome-cv.cls
+            echo "✅ Patched awesome-cv.cls: SourceSansPro -> SourceSans3"
+          else
+            echo "✅ SourceSansPro fonts available, no patch needed"
           fi
-          fc-cache -f "$FONTDIR"
-          # Verify
-          fc-list | grep -i "SourceSansPro" | head -3 || echo "⚠️  Fonts not found after install"
 
       - name: 🔒 Build PDF/A variant
         shell: bash
