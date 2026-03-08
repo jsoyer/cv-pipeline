@@ -316,7 +316,7 @@ class LinkedInScreen(Screen):
         elif event.button.id in ("btn-msg-recruiter", "btn-msg-hm"):
             msg_type = "recruiter" if event.button.id == "btn-msg-recruiter" else "hm"
             self.app.pop_screen()
-            self.push_screen(NameScreen(
+            self.app.push_screen(NameScreen(
                 f"LinkedIn Message ({msg_type})",
                 f"linkedin-message",
                 extra=f"TYPE={msg_type}"
@@ -411,7 +411,7 @@ class ReferencesScreen(Screen):
             self.app.run_make("references")
         elif event.button.id == "btn-request":
             self.app.pop_screen()
-            self.push_screen(NameScreen("Reference Request Emails", "references ACTION=request"))
+            self.app.push_screen(NameScreen("Reference Request Emails", "references ACTION=request"))
 
 
 class CVVersionsScreen(Screen):
@@ -434,11 +434,11 @@ class CVVersionsScreen(Screen):
         if event.button.id == "btn-list":
             self.app.run_make("cv-versions")
         elif event.button.id == "btn-save":
-            self.push_screen(_VersionNameScreen("save"))
+            self.app.push_screen(_VersionNameScreen("save"))
         elif event.button.id == "btn-activate":
-            self.push_screen(_VersionNameScreen("activate"))
+            self.app.push_screen(_VersionNameScreen("activate"))
         elif event.button.id == "btn-diff":
-            self.push_screen(_VersionNameScreen("diff"))
+            self.app.push_screen(_VersionNameScreen("diff"))
 
 
 class _VersionNameScreen(Screen):
@@ -501,6 +501,49 @@ class PrepQuizScreen(Screen):
             self.app.run_make(f"prep-quiz{name_part} CAT={cat}")
 
 
+class NotifyScreen(Screen):
+    """Screen for updating application status."""
+
+    BINDINGS = [Binding("escape", "pop_screen", "Back")]
+
+    def compose(self) -> ComposeResult:
+        yield Header()
+        with Vertical(id="form"):
+            yield Static("Notify — Update Application Status")
+            options = get_app_names()
+            if options:
+                yield Select(options, id="name", prompt="Select application...")
+            else:
+                yield Input(placeholder="Application name", id="name")
+            yield Static("Status:")
+            yield Button("Applied",     id="btn-applied",    variant="primary")
+            yield Button("Interview",   id="btn-interview",  variant="success")
+            yield Button("Offer",       id="btn-offer",      variant="success")
+            yield Button("Rejected",    id="btn-rejected",   variant="error")
+            yield Button("Ghosted",     id="btn-ghosted")
+        yield Footer()
+
+    def _get_name(self) -> str:
+        widget = self.query_one("#name")
+        if isinstance(widget, Select):
+            return "" if widget.value is Select.BLANK else str(widget.value)
+        return widget.value.strip()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        name = self._get_name()
+        if not name:
+            return
+        status_map = {
+            "btn-applied": "applied", "btn-interview": "interview",
+            "btn-offer": "offer", "btn-rejected": "rejected",
+            "btn-ghosted": "ghosted",
+        }
+        status = status_map.get(event.button.id)
+        if status:
+            self.app.pop_screen()
+            self.app.run_make(f"notify NAME={name} STATUS={status}")
+
+
 # ---------------------------------------------------------------------------
 # Main App
 # ---------------------------------------------------------------------------
@@ -557,6 +600,8 @@ class CVApp(App):
                 yield Button("Competitor Map",    id="btn-competitor-map")
                 yield Button("Network Map",       id="btn-network-map")
                 yield Button("URL Check",         id="btn-url-check")
+                yield Button("Discover Jobs",     id="btn-discover")
+                yield Button("Trends",            id="btn-trends")
 
                 yield Static("Outreach", classes="section-title")
                 yield Button("LinkedIn Profile",  id="btn-linkedin-profile")
@@ -594,6 +639,8 @@ class CVApp(App):
                 yield Button("CV Health",         id="btn-cv-health")
                 yield Button("Skills Gap",        id="btn-skills")
                 yield Button("CV Length",         id="btn-length")
+                yield Button("Tone Check",        id="btn-tone")
+                yield Button("CL Score",          id="btn-cl-score")
                 yield Button("Effectiveness",     id="btn-effectiveness")
 
                 yield Static("Reporting", classes="section-title")
@@ -622,6 +669,11 @@ class CVApp(App):
                 yield Button("Export CSV",        id="btn-export-csv")
                 yield Button("LinkedIn Sync",     id="btn-linkedin")
 
+                yield Static("Automation", classes="section-title")
+                yield Button("Dashboard (HTML)",  id="btn-dashboard")
+                yield Button("Watch Mode",        id="btn-watch")
+                yield Button("Notify Status",     id="btn-notify")
+
                 yield Static("System", classes="section-title")
                 yield Button("Follow-up Email",   id="btn-followup")
                 yield Button("Doctor",            id="btn-doctor")
@@ -642,7 +694,8 @@ class CVApp(App):
                     "when you are on an apply/* git branch.\n\n"
                     "Sections: Build · Workflow · Intelligence · Outreach\n"
                     "          Interview Prep · Post-Interview · Analysis\n"
-                    "          Reporting · Quality · CV Management · Export · System",
+                    "          Reporting · Quality · CV Management\n"
+                    "          Export · Automation · System",
                     id="info",
                 )
                 with ScrollableContainer(id="output"):
@@ -674,13 +727,17 @@ class CVApp(App):
             "btn-url-check":    "url-check",
             "btn-digest":       "digest",
             "btn-question-bank":"question-bank",
-            "btn-deadline-alert":"deadline-alert --dry-run",
+            "btn-deadline-alert":"deadline-alert DRY=true",
             "btn-network-map":  "network-map",
             "btn-ats-rank":     "ats-rank",
             "btn-export-csv":   "export-csv",
             "btn-linkedin-post":"linkedin-post",
             "btn-elevator-pitch":"elevator-pitch",
             "btn-cv-keywords":  "cv-keywords",
+            "btn-discover":     "discover",
+            "btn-trends":       "trends",
+            "btn-dashboard":    "dashboard",
+            "btn-watch":        "watch",
             "btn-help":         "help",
         }
         if btn in simple:
@@ -730,6 +787,8 @@ class CVApp(App):
             "btn-milestone":     ("Log Interview Milestone",    "milestone"),
             "btn-linkedin-msg":  ("LinkedIn Message",           "linkedin-message"),
             "btn-interview-brief": ("Interview Brief",          "interview-brief"),
+            "btn-tone":          ("Tone Check",                 "tone"),
+            "btn-cl-score":      ("Cover Letter Score",         "cl-score"),
         }
         if btn in name_screens:
             title, cmd = name_screens[btn]
@@ -761,6 +820,8 @@ class CVApp(App):
             self.push_screen(CVVersionsScreen())
         elif btn == "btn-prep-quiz":
             self.push_screen(PrepQuizScreen())
+        elif btn == "btn-notify":
+            self.push_screen(NotifyScreen())
         elif btn == "btn-quit":
             self.exit()
 

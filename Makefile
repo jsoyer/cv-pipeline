@@ -73,10 +73,15 @@ current:
 		exit 1; \
 	fi
 
-# Build master resume and cover letter
+# Build master resume and cover letter PDFs
 all:
-	@echo "Error: no target specified. Run 'make help' to see available commands." >&2
-	@exit 1
+	@$(MAKE) --no-print-directory render
+	@echo "🔨 Compiling PDFs..."
+	@$(XELATEX) -output-directory=. CV.tex > /dev/null 2>&1 && echo "   ✅ CV.pdf" || echo "   ❌ CV.tex — compilation failed"
+	@if [ -f CoverLetter.tex ]; then \
+		$(XELATEX) -output-directory=. CoverLetter.tex > /dev/null 2>&1 && echo "   ✅ CoverLetter.pdf" || echo "   ❌ CoverLetter.tex — compilation failed"; \
+	fi
+	@echo "✅ Build complete"
 
 # Build and open PDFs in Preview
 # Usage: make open  or  make open NAME=2026-02-databricks
@@ -1130,7 +1135,7 @@ help:
 	@echo "  make compare NAME1=... NAME2=...  Compare two tailored CVs"
 	@echo "  make visual-diff NAME=...         PDF visual regression"
 	@echo ""
-	@echo "Quality:"
+	@echo "Tone & Style:"
 	@echo "  make tone NAME=...                Tone consistency check (formality, action verbs)"
 	@echo "  make cl-score NAME=...            Cover letter score vs job description"
 	@echo ""
