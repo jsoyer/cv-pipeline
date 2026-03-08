@@ -1,5 +1,5 @@
 .PHONY: all open app new apply tailor render score status lint diff compare \
-       archive export docx linkedin hooks check report fetch prep changelog \
+       archive export docx linkedin hooks check report fetch prep changelog status \
        skills visual-diff stats clean doctor timeline length match followup effectiveness review help \
        tone cl-score research discover discover-apply batch batch-dry dashboard \
        trends thankyou negotiate notify watch follow-up \
@@ -9,7 +9,7 @@
        archive-app linkedin-profile \
        interview-brief prep-star interview-debrief linkedin-post export-csv \
        elevator-pitch onboarding-plan cover-critique interview-sim \
-       cv-keywords blind-spots current pipeline
+       cv-keywords blind-spots current pipeline tui
 
 # Auto-load .env if present (for GEMINI_API_KEY)
 -include .env
@@ -1091,6 +1091,11 @@ ats-text:
 		$(PYTHON) scripts/ats-text.py $(if $(filter true,$(NO_CL)),--no-cl); \
 	fi
 
+# Launch the Textual TUI (Terminal User Interface)
+# Usage: make tui
+tui:
+	@$(PYTHON) scripts/tui.py
+
 help:
 	@echo "📄 CV Build System"
 	@echo ""
@@ -1196,6 +1201,7 @@ help:
 	@echo "  make apply-board [STAGE=...]      Terminal Kanban board — applications by stage"
 	@echo "  make archive-app NAME=... [OUTCOME=...]  Enhanced archive with summary + git tag"
 	@echo "  make linkedin [PUSH=true]         LinkedIn sync (dry-run default)"
+	@echo "  make tui                          Interactive terminal UI (Textual)"
 	@echo "  make doctor                       Check all dependencies + API keys"
 	@echo "  make hooks                        Install git pre-commit hooks"
 	@echo "  make clean                        Remove generated files"

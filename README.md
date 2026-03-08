@@ -133,6 +133,7 @@ make doctor                   # verify everything works
 ```bash
 make                          # Build master CV + Cover Letter
 make open                     # Build + open PDFs
+make tui                      # Interactive terminal UI (Textual)
 make help                     # Show all 83+ targets
 ```
 
@@ -291,13 +292,13 @@ make archive-app NAME=... OUTCOME=offer       # Archive with summary + git tag
 | `ai.py` | Unified LLM caller -- 5 providers, retry with backoff, model fallback, JSON validation |
 | `common.py` | Paths, YAML loading, stop words, structured logging, timeout constants |
 
-### Intelligence & Research (6)
+### Intelligence & Research (7)
 
-`company-research.py` `contacts.py` `competitor-map.py` `job-discovery.py` `network-map.py` `job-fit.py`
+`company-research.py` `contacts.py` `competitor-map.py` `job-discovery.py` `network-map.py` `job-fit.py` `url-check.py`
 
-### CV Tailoring & Quality (7)
+### CV Tailoring & Quality (12)
 
-`cover-angles.py` `cv-fr-tailor.py` `tone-check.py` `cv-health.py` `cv-versions.py` `blind-spots.py` `cv-keywords.py`
+`cover-angles.py` `cv-fr-tailor.py` `tone-check.py` `cv-health.py` `cv-versions.py` `blind-spots.py` `cv-keywords.py` `cl-score.py` `length-optimizer.py` `ats-rank.py` `ats-text.py` `match.py`
 
 ### Interview (14)
 
@@ -309,11 +310,11 @@ make archive-app NAME=... OUTCOME=offer       # Archive with summary + git tag
 
 ### Reporting (11)
 
-`apply-board.py` `report.py` `stats.py` `digest.py` `deadline-alert.py` `question-bank.py` `changelog.py` `timeline.py` `generate-dashboard.py` `effectiveness.py` `ats-rank.py`
+`apply-board.py` `report.py` `stats.py` `digest.py` `deadline-alert.py` `question-bank.py` `changelog.py` `timeline.py` `generate-dashboard.py` `effectiveness.py` `keyword-trends.py`
 
-### Export & Utilities (10)
+### Export & Utilities (12)
 
-`json-resume.py` `export-csv.py` `export.py` `archive-app.py` `linkedin-sync.py` `notify.py` `watch.py` `batch-apply.py` `doctor.py` `tui.py`
+`json-resume.py` `export-csv.py` `export.py` `archive-app.py` `linkedin-sync.py` `notify.py` `watch.py` `batch-apply.py` `doctor.py` `tui.py` `skills-gap.py` `visual-diff.py`
 
 ---
 
@@ -347,8 +348,8 @@ python -m pytest tests/ -v    # 99 tests
 
 | Module | Tests | Focus |
 |--------|-------|-------|
-| `test_render.py` | 34 | LaTeX escaping, bold conversion, Awesome-CV section rendering |
-| `test_ai.py` | 31 | All 5 providers: retry, fallback, error handling (mocked HTTP) |
+| `test_render.py` | 35 | LaTeX escaping, bold conversion, Awesome-CV section rendering |
+| `test_ai.py` | 30 | All 5 providers: retry, fallback, error handling (mocked HTTP) |
 | `test_common.py` | 34 | YAML loading, env parsing, logging, path utilities |
 
 ---
