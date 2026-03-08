@@ -5,8 +5,8 @@ This is a personal CV repository, but the automation tooling may be useful to ot
 ## Setup
 
 ```bash
-git clone --recurse-submodules https://github.com/jsoyer/CV.git
-cd CV
+git clone --recurse-submodules https://github.com/jsoyer/cv-pipeline.git
+cd cv-pipeline
 pip install -r requirements.txt
 make doctor    # Check all dependencies
 ```
