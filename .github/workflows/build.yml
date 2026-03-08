@@ -28,19 +28,29 @@ jobs:
           apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null 2>&1
           pip3 install pyyaml --break-system-packages
 
-      - name: 🔗 Install bundled fonts (Awesome-CV)
+      - name: 🔗 Fix fonts (SourceSansPro -> SourceSans3 for TeX Live 2026)
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /usr/local/share/fonts/awesome-cv
-          cp awesome-cv/fonts/*.ttf awesome-cv/fonts/*.otf /usr/local/share/fonts/awesome-cv/ 2>/dev/null || true
-          # Create SourceSans3 aliases for SourceSansPro (renamed in TeX Live 2026)
-          cd /usr/local/share/fonts/awesome-cv
-          for f in SourceSansPro-*; do
-            [ -f "$f" ] || continue
-            ln -sf "$f" "${f/SourceSansPro/SourceSans3}"
-          done
-          fc-cache -f /usr/local/share/fonts/awesome-cv
+          # TeX Live 2026 renamed sourcesanspro to sourcesans (SourceSans3-*)
+          # Awesome-CV cls references SourceSansPro-* — create symlinks
+          FONTDIR=$(kpsewhich --var-value TEXMFLOCAL)/fonts/opentype/custom
+          mkdir -p "$FONTDIR"
+          # Find where SourceSans3 fonts live
+          S3DIR=$(dirname "$(kpsewhich SourceSans3-Regular.otf 2>/dev/null || echo '')" 2>/dev/null || true)
+          if [ -n "$S3DIR" ] && [ -d "$S3DIR" ]; then
+            for f in "$S3DIR"/SourceSans3-*; do
+              [ -f "$f" ] || continue
+              base=$(basename "$f")
+              target="${base/SourceSans3/SourceSansPro}"
+              ln -sf "$f" "$FONTDIR/$target"
+            done
+            texhash "$FONTDIR/.." 2>/dev/null || true
+            fc-cache -f "$FONTDIR"
+          else
+            echo "⚠️  SourceSans3 fonts not found, trying tlmgr install"
+            tlmgr install sourcesanspro 2>/dev/null || true
+          fi
 
       - name: 🔧 Render YAML to LaTeX
         shell: bash
@@ -185,19 +195,29 @@ jobs:
           apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null 2>&1
           pip3 install pyyaml --break-system-packages
 
-      - name: 🔗 Install bundled fonts (Awesome-CV)
+      - name: 🔗 Fix fonts (SourceSansPro -> SourceSans3 for TeX Live 2026)
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p /usr/local/share/fonts/awesome-cv
-          cp awesome-cv/fonts/*.ttf awesome-cv/fonts/*.otf /usr/local/share/fonts/awesome-cv/ 2>/dev/null || true
-          # Create SourceSans3 aliases for SourceSansPro (renamed in TeX Live 2026)
-          cd /usr/local/share/fonts/awesome-cv
-          for f in SourceSansPro-*; do
-            [ -f "$f" ] || continue
-            ln -sf "$f" "${f/SourceSansPro/SourceSans3}"
-          done
-          fc-cache -f /usr/local/share/fonts/awesome-cv
+          # TeX Live 2026 renamed sourcesanspro to sourcesans (SourceSans3-*)
+          # Awesome-CV cls references SourceSansPro-* — create symlinks
+          FONTDIR=$(kpsewhich --var-value TEXMFLOCAL)/fonts/opentype/custom
+          mkdir -p "$FONTDIR"
+          # Find where SourceSans3 fonts live
+          S3DIR=$(dirname "$(kpsewhich SourceSans3-Regular.otf 2>/dev/null || echo '')" 2>/dev/null || true)
+          if [ -n "$S3DIR" ] && [ -d "$S3DIR" ]; then
+            for f in "$S3DIR"/SourceSans3-*; do
+              [ -f "$f" ] || continue
+              base=$(basename "$f")
+              target="${base/SourceSans3/SourceSansPro}"
+              ln -sf "$f" "$FONTDIR/$target"
+            done
+            texhash "$FONTDIR/.." 2>/dev/null || true
+            fc-cache -f "$FONTDIR"
+          else
+            echo "⚠️  SourceSans3 fonts not found, trying tlmgr install"
+            tlmgr install sourcesanspro 2>/dev/null || true
+          fi
 
       - name: 🔒 Build PDF/A variant
         shell: bash
