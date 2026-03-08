@@ -25,39 +25,98 @@ skills:
   - category: Donnees
     items: PostgreSQL, Redis, Elasticsearch, Kafka, DynamoDB
 
+key_wins:
+  - title: Optimisation CI/CD
+    text: >-
+      Reduction de la duree du pipeline de 45min a 8min, economisant 200+
+      heures-ingenieur/mois
+  - title: Migration Microservices
+    text: >-
+      Direction de la migration vers une architecture microservices servant
+      2M+ utilisateurs actifs quotidiens
+  - title: Plateforme Developpeur
+    text: >-
+      Construction d'une plateforme developpeur interne adoptee par 150+
+      ingenieurs sur 12 equipes
+  - title: Mentorat
+    text: >-
+      Mentorat de 8 ingenieurs juniors, 5 promus au niveau intermediaire
+      en 18 mois
+
 experience:
-  - company: TechCorp Inc.
-    position: Ingenieure Logiciel Senior
+  - title: Ingenieure Logiciel Senior
+    company: TechCorp Inc.
     dates: 2022 -- Present
     location: San Francisco, CA
-    bullets:
-      - >-
-        Conception et deploiement de **microservices event-driven** traitant
-        10M+ evenements/jour sur AWS ECS avec Kafka, 99.95% de disponibilite
-      - >-
-        Direction d'une equipe de 6 ingenieurs pour reconstruire le systeme
-        de facturation, reduisant les pertes de revenus de **2.4M$/an**
+    items:
+      - text: >-
+          Conception et deploiement de **microservices event-driven** traitant
+          10M+ evenements/jour sur AWS ECS avec Kafka, 99.95% de disponibilite
+      - text: >-
+          Direction d'une equipe de 6 ingenieurs pour reconstruire le systeme
+          de facturation, reduisant les pertes de revenus de **2.4M$/an**
+      - text: >-
+          Conception d'un pipeline CI/CD avec GitHub Actions et ArgoCD,
+          augmentant la frequence de deploiement de hebdomadaire a **15+
+          deploiements/jour**
 
-  - company: StartupXYZ
-    position: Ingenieure Logiciel
+  - title: Ingenieure Logiciel
+    company: StartupXYZ
     dates: 2019 -- 2022
     location: New York, NY
-    bullets:
-      - >-
-        Developpement d'un dashboard analytique temps reel avec **React**
-        et **WebSocket**, servant 50K+ utilisateurs simultanes
-      - >-
-        Implementation d'une couche de cache distribuee avec Redis,
-        reduisant les temps de reponse API de **60%**
+    items:
+      - text: >-
+          Developpement d'un dashboard analytique temps reel avec **React**
+          et **WebSocket**, servant 50K+ utilisateurs simultanes
+      - text: >-
+          Implementation d'une couche de cache distribuee avec Redis,
+          reduisant les temps de reponse API de **60%** (p99 de 800ms a 320ms)
+      - text: >-
+          Contribution a un framework interne open-source, maintenant
+          utilise par 3 entreprises externes
+
+early_career:
+  - title: Ingenieure Logiciel Junior
+    company: BigDataCo
+    dates: 2017 -- 2019
+    location: Austin, TX
+    items:
+      - text: >-
+          Developpement de pipelines ETL traitant **5TB+ quotidiennement**
+          avec Python et Apache Spark sur AWS EMR
+      - text: >-
+          Creation de tableaux de bord de monitoring avec Grafana et
+          Prometheus, reduisant le temps de reponse aux incidents de **40%**
 
 education:
-  - school: University of California, Berkeley
-    degree: B.S. Computer Science
+  - degree: B.S. Informatique
+    school: University of California, Berkeley
     dates: 2013 -- 2017
     location: Berkeley, CA
+    note: "GPA: 3.8/4.0, Liste du Doyen"
+
+certifications:
+  - name: AWS Solutions Architect -- Professional
+    institution: Amazon Web Services
+    date: "2023"
+  - name: Certified Kubernetes Administrator (CKA)
+    institution: Cloud Native Computing Foundation
+    date: "2022"
+
+awards: >-
+  Laureat du Prix d'Excellence en Ingenierie TechCorp (2023) pour avoir
+  dirige la reconstruction du systeme de facturation eliminant 2.4M$ de
+  pertes de revenus annuelles.
+
+publications: >-
+  Co-auteur de "Scaling Event-Driven Architectures" publie sur le blog
+  ingenierie de TechCorp (2023), avec 15K+ lectures.
 
 languages:
-  - language: Anglais
-    level: Natif
-  - language: Espagnol
-    level: Intermediaire (B2)
+  - "Anglais (Natif)"
+  - "Espagnol (Intermediaire, B2)"
+
+interests:
+  - Contribution open-source
+  - Escalade
+  - Mentorat d'etudiants en bootcamp
