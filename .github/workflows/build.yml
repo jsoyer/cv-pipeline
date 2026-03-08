@@ -28,20 +28,19 @@ jobs:
           apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null 2>&1
           pip3 install pyyaml --break-system-packages
 
-      - name: 🔗 Fix font symlinks (SourceSansPro -> SourceSans3)
+      - name: 🔗 Install bundled fonts (Awesome-CV)
         shell: bash
         run: |
           set -euo pipefail
-          FONTDIR="awesome-cv/fonts"
-          if [ -d "$FONTDIR" ]; then
-            cd "$FONTDIR"
-            for f in SourceSansPro-*; do
-              [ -f "$f" ] || continue
-              target="${f/SourceSansPro/SourceSans3}"
-              [ -f "$target" ] || ln -s "$f" "$target"
-            done
-            cd - > /dev/null
-          fi
+          mkdir -p /usr/local/share/fonts/awesome-cv
+          cp awesome-cv/fonts/*.ttf awesome-cv/fonts/*.otf /usr/local/share/fonts/awesome-cv/ 2>/dev/null || true
+          # Create SourceSans3 aliases for SourceSansPro (renamed in TeX Live 2026)
+          cd /usr/local/share/fonts/awesome-cv
+          for f in SourceSansPro-*; do
+            [ -f "$f" ] || continue
+            ln -sf "$f" "${f/SourceSansPro/SourceSans3}"
+          done
+          fc-cache -f /usr/local/share/fonts/awesome-cv
 
       - name: 🔧 Render YAML to LaTeX
         shell: bash
@@ -186,20 +185,19 @@ jobs:
           apt-get update -qq && apt-get install -y -qq python3-pip > /dev/null 2>&1
           pip3 install pyyaml --break-system-packages
 
-      - name: 🔗 Fix font symlinks (SourceSansPro -> SourceSans3)
+      - name: 🔗 Install bundled fonts (Awesome-CV)
         shell: bash
         run: |
           set -euo pipefail
-          FONTDIR="awesome-cv/fonts"
-          if [ -d "$FONTDIR" ]; then
-            cd "$FONTDIR"
-            for f in SourceSansPro-*; do
-              [ -f "$f" ] || continue
-              target="${f/SourceSansPro/SourceSans3}"
-              [ -f "$target" ] || ln -s "$f" "$target"
-            done
-            cd - > /dev/null
-          fi
+          mkdir -p /usr/local/share/fonts/awesome-cv
+          cp awesome-cv/fonts/*.ttf awesome-cv/fonts/*.otf /usr/local/share/fonts/awesome-cv/ 2>/dev/null || true
+          # Create SourceSans3 aliases for SourceSansPro (renamed in TeX Live 2026)
+          cd /usr/local/share/fonts/awesome-cv
+          for f in SourceSansPro-*; do
+            [ -f "$f" ] || continue
+            ln -sf "$f" "${f/SourceSansPro/SourceSans3}"
+          done
+          fc-cache -f /usr/local/share/fonts/awesome-cv
 
       - name: 🔒 Build PDF/A variant
         shell: bash
