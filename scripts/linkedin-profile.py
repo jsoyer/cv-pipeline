@@ -92,7 +92,7 @@ def extract_cv_context(cv_data: dict) -> dict:
         "current_dates":   current.get("dates", ""),
         "current_items":   _flatten_items(current.get("items", [])),
         "key_wins":        [
-            f"{w.get('title','')}: {re.sub(r'\\*\\*(.+?)\\*\\*', r'\\1', w.get('text',''))}"
+            w.get("title", "") + ": " + re.sub(r"\*\*(.+?)\*\*", r"\1", w.get("text", ""))
             for w in wins if isinstance(w, dict)
         ],
         "top_skills": skills_flat[:20],

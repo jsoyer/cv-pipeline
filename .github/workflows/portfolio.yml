@@ -22,12 +22,13 @@ jobs:
         with:
           python-version: '3.11'
       - run: pip install pyyaml
-      - run: python scripts/portfolio.py -o portfolio/index.html
+      - run: mkdir -p portfolio && python scripts/portfolio.py -o portfolio/index.html
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./portfolio
           publish_branch: gh-pages
+          force_orphan: true
           user_name: github-actions[bot]
           user_email: github-actions[bot]@users.noreply.github.com
