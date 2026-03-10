@@ -1,0 +1,27 @@
+# Personal data — never bake into the image
+data/
+applications/
+examples/
+
+# Secrets and local state
+.env
+.env.*
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Dev artefacts
+*.pdf
+*.tex
+*.aux
+*.log
+*.out
+*.toc
+
+# Docs and meta
+docs/
+tests/
+.github/
+*.md
+LICENSE

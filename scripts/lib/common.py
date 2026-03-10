@@ -58,14 +58,19 @@ def setup_logging(verbose: bool = False) -> logging.Logger:
     logger = logging.getLogger(caller)
     if not logger.handlers:
         handler = logging.StreamHandler()
+        # LOG_LEVEL env var overrides verbose flag
+        env_level = os.environ.get("LOG_LEVEL", "").upper()
+        if env_level in ("DEBUG", "INFO", "WARNING", "ERROR"):
+            level = getattr(logging, env_level)
+            verbose = level == logging.DEBUG
+        else:
+            level = logging.DEBUG if verbose else logging.INFO
         if verbose:
             fmt = "%(asctime)s %(levelname)-5s %(name)s: %(message)s"
-            handler.setLevel(logging.DEBUG)
-            logger.setLevel(logging.DEBUG)
         else:
             fmt = "%(levelname)-5s %(message)s"
-            handler.setLevel(logging.INFO)
-            logger.setLevel(logging.INFO)
+        handler.setLevel(level)
+        logger.setLevel(level)
         handler.setFormatter(logging.Formatter(fmt, datefmt="%H:%M:%S"))
         logger.addHandler(handler)
     return logger

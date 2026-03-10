@@ -9,7 +9,17 @@
        archive-app linkedin-profile \
        interview-brief prep-star interview-debrief linkedin-post export-csv \
        elevator-pitch onboarding-plan cover-critique interview-sim \
-       cv-keywords blind-spots current pipeline tui
+       cv-keywords blind-spots current pipeline tui \
+       status-active completions-bash completions-fish completions-ps1 completions-nu \
+       test coverage preview clean-all dev-setup validate-all predict \
+       compare-providers accent cache-stats cache-clear \
+       ats-history funnel analytics \
+       notion-pull notion-push notion-diff \
+       boards boards-file cv-api \
+       doctor-fix semantic smart-followup \
+       beautify migrate \
+       market-list market-search market-install market-installed \
+       portfolio portfolio-fr docker-build docker-run
 
 # Auto-load .env if present (for GEMINI_API_KEY)
 -include .env
@@ -28,6 +38,9 @@ LANG :=
 # AI provider for make tailor (default: gemini)
 # Usage: make tailor NAME=... AI=claude
 AI ?= gemini
+
+# Docker image name (used by make docker-build / make docker-run)
+DOCKER_IMAGE ?= ghcr.io/janedoe/cv-pipeline
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME), Darwin)
@@ -383,9 +396,13 @@ score:
 	@test -d "applications/$(NAME)" || (echo "Directory applications/$(NAME) not found" && exit 1)
 	@$(PYTHON) scripts/ats-score.py "applications/$(NAME)" || true
 
-# Dashboard — alias for apply-board (Kanban view by pipeline stage)
-# Use 'make apply-board' directly; 'make status' is kept for backwards compatibility.
-status: apply-board
+# Quick application overview: stage, days since creation, ATS score, provider
+status:              ## Quick overview of all applications
+	@$(PYTHON) scripts/status.py
+
+# Active applications only (applied/interview/offer — skip rejected/ghosted)
+status-active:       ## Active applications only (no rejected/ghosted)
+	@$(PYTHON) scripts/status.py --active
 
 # LaTeX lint check
 # Usage: make lint  or  make lint NAME=2026-02-databricks
@@ -1096,6 +1113,309 @@ ats-text:
 tui:
 	@$(PYTHON) scripts/tui.py
 
+# ---------------------------------------------------------------------------
+# Shell completions
+# ---------------------------------------------------------------------------
+
+# Bash: source scripts/completions.bash  (or add to ~/.bashrc)
+completions-bash:
+	@echo "# Add to ~/.bashrc:"
+	@echo "source $(CURDIR)/scripts/completions.bash"
+	@echo ""
+	@echo "# Or install to bash-completion dir:"
+	@if [ -d /usr/share/bash-completion/completions ]; then \
+		cp scripts/completions.bash /usr/share/bash-completion/completions/cv-make; \
+		echo "✅ Installed: /usr/share/bash-completion/completions/cv-make"; \
+	else \
+		echo "ℹ️  No bash-completion dir found — source manually"; \
+	fi
+
+# Fish: install to ~/.config/fish/completions/
+completions-fish:
+	@mkdir -p ~/.config/fish/completions
+	@cp scripts/completions.fish ~/.config/fish/completions/cv-make.fish
+	@echo "✅ Installed: ~/.config/fish/completions/cv-make.fish"
+
+# PowerShell: print install instructions
+completions-ps1:
+	@echo "# Add to your PowerShell \$$PROFILE:"
+	@echo ". $(CURDIR)/scripts/completions.ps1"
+	@echo ""
+	@echo "# Or copy to your profile directory:"
+	@echo "cp scripts/completions.ps1 \$$HOME/Documents/PowerShell/cv-completions.ps1"
+
+# Nushell: print install instructions
+completions-nu:
+	@echo "# Add to your config.nu (~/.config/nushell/config.nu):"
+	@echo "source $(CURDIR)/scripts/completions.nu"
+	@echo ""
+	@echo "# Or copy to your nushell config dir:"
+	@echo "cp scripts/completions.nu \$$HOME/.config/nushell/cv-completions.nu"
+
+# Run unit tests
+test:
+	@$(PYTHON) -m pytest tests/ -v --tb=short
+
+# Run tests with coverage + open HTML report
+coverage:
+	@$(PYTHON) -m pytest tests/ --cov=scripts --cov-report=html --cov-report=term-missing -q
+	@echo "📊 HTML report: htmlcov/index.html"
+	@open htmlcov/index.html 2>/dev/null || xdg-open htmlcov/index.html 2>/dev/null || true
+
+# Preview all theme variants from a single YAML
+preview:
+	@echo "Generating theme previews..."
+	@for theme in data/themes/*.yml; do \
+		name=$$(basename "$$theme" .yml); \
+		echo "  Theme: $$name"; \
+		$(PYTHON) scripts/render.py -d data/cv.yml -o "CV-$$name.tex" -t "$$theme"; \
+		$(XELATEX) -interaction=nonstopmode -output-directory=. "CV-$$name.tex" > /dev/null 2>&1; \
+	done
+	@echo "Done! Open with: open CV-*.pdf"
+
+# Deep clean: remove all generated files (PDFs, .tex, LaTeX aux)
+clean-all: clean
+	rm -f *.tex
+	rm -f applications/*/*.tex
+
+# One-command dev environment setup
+dev-setup:
+	@echo "Setting up development environment..."
+	@test -d venv || python3 -m venv venv
+	@venv/bin/pip install -q -r requirements.txt -r requirements-dev.txt
+	@venv/bin/pip install -q mypy ruff types-PyYAML types-requests jsonschema
+	@echo "Installing git hooks..."
+	@$(PYTHON) scripts/install-hooks.sh 2>/dev/null || true
+	@echo ""
+	@echo "Done! Activate with: source venv/bin/activate"
+	@echo "Run tests:  make test"
+	@echo "Run checks: make check"
+
+# Validate all cv*.yml files against the JSON schema
+validate-all:
+	@$(PYTHON) -c "\
+import json, yaml, sys; \
+from jsonschema import validate, ValidationError; \
+schema = json.load(open('data/cv-schema.json')); \
+errors = 0; \
+import glob; \
+for path in sorted(glob.glob('data/cv*.yml')): \
+    try: \
+        data = yaml.safe_load(open(path)); \
+        validate(instance=data, schema=schema); \
+        print(f'  ok {path}'); \
+    except ValidationError as e: \
+        print(f'  FAIL {path}: {e.message}'); \
+        errors += 1; \
+    except Exception as e: \
+        print(f'  SKIP {path}: {e}'); \
+print(); \
+print('All valid' if not errors else f'{errors} validation error(s)'); \
+sys.exit(1 if errors else 0)"
+
+# Interview probability predictor (logistic regression on historical ATS scores)
+# Usage: make predict              — show model summary + all predictions
+#        make predict NAME=...     — predict for one application
+#        make predict TOP=10       — show top 10 by predicted probability
+predict:
+	@$(PYTHON) scripts/interview-predictor.py \
+		$(if $(NAME),--predict applications/$(NAME),) \
+		$(if $(TOP),--top $(TOP),)
+
+# ---------------------------------------------------------------------------
+# AI provider intelligence
+# ---------------------------------------------------------------------------
+
+# Compare all configured providers on the same job (requires job.txt)
+# Usage: make compare-providers NAME=2026-02-acme
+#        make compare-providers NAME=... PROVIDERS=gemini,claude
+compare-providers:
+	@test -n "$(NAME)" || (echo "Usage: make compare-providers NAME=2026-02-acme" && exit 1)
+	@test -d "applications/$(NAME)" || (echo "Directory applications/$(NAME) not found" && exit 1)
+	$(PYTHON) scripts/compare-providers.py "applications/$(NAME)" \
+		$(if $(PROVIDERS),--providers $(PROVIDERS),)
+
+# Auto-detect company accent color and create theme file
+# Usage: make accent NAME=2026-02-acme
+accent:
+	@test -n "$(NAME)" || (echo "Usage: make accent NAME=2026-02-acme" && exit 1)
+	@test -d "applications/$(NAME)" || (echo "Directory applications/$(NAME) not found" && exit 1)
+	$(PYTHON) scripts/accent-color.py "applications/$(NAME)"
+
+# Show AI response cache statistics
+cache-stats:
+	@$(PYTHON) -c "import sys; sys.path.insert(0, 'scripts'); from lib.cache import cache_stats; s = cache_stats(); print(f'Cache: {s[\"entries\"]} entries, {s[\"size_bytes\"]//1024}KB — {s[\"dir\"]}')"
+
+# Clear expired AI cache entries (older than 7 days)
+# Usage: make cache-clear  or  make cache-clear MAX_AGE=86400 (1 day)
+cache-clear:
+	@$(PYTHON) -c "import sys; sys.path.insert(0, 'scripts'); from lib.cache import cache_clear; n = cache_clear($(if $(MAX_AGE),$(MAX_AGE),604800)); print(f'Cleared {n} expired cache entries')"
+
+# ---------------------------------------------------------------------------
+# Application analytics
+# ---------------------------------------------------------------------------
+
+# ATS score trend per application (reads ats_history[] from meta.yml)
+# Usage: make ats-history [NAME=2026-02-company]
+ats-history:
+	@cd scripts && $(PYTHON) ats-history.py $(if $(NAME),--app $(NAME),)
+
+# Funnel conversion rates + ATS correlation + provider breakdown
+# Usage: make funnel [PROVIDER=gemini]
+funnel:
+	@cd scripts && $(PYTHON) funnel-analytics.py $(if $(PROVIDER),--provider $(PROVIDER),)
+
+# Combined analytics report (ATS history + funnel)
+analytics:
+	@echo ""
+	@echo "=== ATS Score History ==="
+	@cd scripts && $(PYTHON) ats-history.py
+	@echo ""
+	@echo "=== Funnel Analytics ==="
+	@cd scripts && $(PYTHON) funnel-analytics.py
+
+# ---------------------------------------------------------------------------
+# Integrations
+# ---------------------------------------------------------------------------
+
+# Notion two-way sync
+# Usage: make notion-pull / make notion-push / make notion-diff
+notion-pull:
+	@cd scripts && $(PYTHON) notion-twoway.py pull
+
+notion-push:
+	@cd scripts && $(PYTHON) notion-twoway.py push
+
+notion-diff:
+	@cd scripts && $(PYTHON) notion-twoway.py diff
+
+# Job board integration — Greenhouse + Lever public APIs
+# Usage: make boards BOARD=greenhouse COMPANY=stripe [KEYWORDS="python,api"] [MIN_SCORE=40] [CREATE=1]
+boards:
+	@cd scripts && $(PYTHON) job-boards.py \
+		--board $(if $(BOARD),$(BOARD),greenhouse) \
+		--company $(COMPANY) \
+		$(if $(KEYWORDS),--keywords "$(KEYWORDS)",) \
+		$(if $(MIN_SCORE),--min-score $(MIN_SCORE),) \
+		$(if $(CREATE),--create,)
+
+# Batch job board fetch from data/job-boards.yml
+# Usage: make boards-file [CREATE=1]
+boards-file:
+	@cd scripts && $(PYTHON) job-boards.py \
+		$(if $(CREATE),--create,) \
+		$(if $(DRY_RUN),--dry-run,)
+
+# CV Pipeline API server (webhook for external integrations / userscript)
+# Usage: make cv-api [PORT=8765] [HOST=127.0.0.1]
+cv-api:
+	@$(PYTHON) scripts/cv-api.py --port $(if $(PORT),$(PORT),8765) --host $(if $(HOST),$(HOST),127.0.0.1)
+
+# ---------------------------------------------------------------------------
+# Smart automation
+# ---------------------------------------------------------------------------
+
+# Auto-fix common issues: pip install missing modules, init submodule, create .env
+doctor-fix:
+	@cd scripts && $(PYTHON) doctor.py --fix
+
+# Semantic search across CV bullets and past applications (TF-IDF, no API key)
+# Usage: make semantic MODE=bullets QUERY="led cross-functional team"
+#        make semantic MODE=jobs NAME=2026-03-company
+#        make semantic MODE=keywords QUERY="python kubernetes api"
+semantic:
+	@cd scripts && $(PYTHON) semantic-search.py \
+		$(if $(MODE),$(MODE),bullets) \
+		"$(if $(NAME),$(REPO_ROOT)/applications/$(NAME)/job.txt,$(QUERY))"
+
+# Smart follow-up scheduler — flag stale applications, optionally create GitHub Issues
+# Usage: make smart-followup           — report only
+#        make smart-followup CREATE=1  — create GitHub Issues for new stale apps
+#        make smart-followup DRY=1     — dry-run (show issues without creating)
+smart-followup:
+	@cd scripts && $(PYTHON) smart-followup.py \
+		$(if $(CREATE),--create-issues,) \
+		$(if $(DRY),--dry-run,) \
+		$(if $(DAYS),--threshold $(DAYS),)
+
+# Normalize YAML formatting (consistent key ordering, indentation)
+# Usage: make beautify            — beautify data/cv.yml in-place
+#        make beautify DRY=1     — show diff without writing
+#        make beautify CHECK=1   — exit 1 if file would change (CI)
+beautify:
+	@$(PYTHON) scripts/yaml-beautify.py \
+		$(if $(DRY),--dry-run,) \
+		$(if $(CHECK),--check,) \
+		$(if $(FILE),$(FILE),data/cv.yml)
+
+# Schema migration — add missing fields to meta.yml / cv.yml
+# Usage: make migrate                        — migrate all (cv + apps)
+#        make migrate MIGRATE_TARGET=apps    — only meta.yml files
+#        make migrate MIGRATE_TARGET=cv      — only data/cv.yml
+#        make migrate DRYRUN=1              — dry-run preview
+#        make migrate VERBOSE=1             — show per-field details
+migrate:
+	@$(PYTHON) scripts/schema-migrate.py \
+		$(if $(MIGRATE_TARGET),--target $(MIGRATE_TARGET),) \
+		$(if $(DRYRUN),--dry-run,) \
+		$(if $(VERBOSE),--verbose,)
+
+# ---------------------------------------------------------------------------
+# Template Marketplace
+# ---------------------------------------------------------------------------
+
+market-list:         ## List available templates from marketplace
+	@$(PYTHON) scripts/template-market.py list
+
+market-search:       ## Search templates: make market-search QUERY=...
+	@$(PYTHON) scripts/template-market.py search $(QUERY)
+
+market-install:      ## Install a template: make market-install NAME=...
+	@$(PYTHON) scripts/template-market.py install $(NAME)
+
+market-installed:    ## List locally installed templates
+	@$(PYTHON) scripts/template-market.py installed
+
+# ---------------------------------------------------------------------------
+# Portfolio — static HTML from data/cv.yml → portfolio/index.html
+# ---------------------------------------------------------------------------
+
+# Generate English portfolio
+# Usage: make portfolio
+portfolio:
+	@mkdir -p portfolio
+	@$(PYTHON) scripts/portfolio.py -o portfolio/index.html
+	@echo "Portfolio generated: portfolio/index.html"
+
+# Generate French portfolio
+# Usage: make portfolio-fr
+portfolio-fr:
+	@mkdir -p portfolio
+	@$(PYTHON) scripts/portfolio.py -o portfolio/index-fr.html --lang fr
+	@echo "Portfolio (FR) generated: portfolio/index-fr.html"
+
+# ---------------------------------------------------------------------------
+# Docker
+# ---------------------------------------------------------------------------
+
+# Build Docker image
+# Usage: make docker-build
+#        make docker-build DOCKER_IMAGE=myrepo/cv-pipeline
+docker-build:
+	docker build -t $(DOCKER_IMAGE):latest .
+
+# Run any make target inside the container
+# Usage: make docker-run TARGET=render
+#        make docker-run TARGET="app NAME=2026-02-acme"
+docker-run:
+	@test -n "$(TARGET)" || (echo "Usage: make docker-run TARGET=render" && exit 1)
+	docker run --rm \
+		-v "$(CURDIR)/data:/cv/data" \
+		-v "$(CURDIR)/applications:/cv/applications" \
+		--env-file .env \
+		$(DOCKER_IMAGE):latest \
+		make $(TARGET)
+
 help:
 	@echo "📄 CV Build System"
 	@echo ""
@@ -1124,8 +1444,9 @@ help:
 	@echo "  make length                       Analyze CV length vs 2 pages"
 	@echo ""
 	@echo "Reporting:"
-	@echo "  make apply-board [STAGE=...]      Kanban board by pipeline stage (→ use this)"
-	@echo "  make status                       Alias for apply-board (backwards compat)"
+	@echo "  make apply-board [STAGE=...]      Kanban board by pipeline stage"
+	@echo "  make status                       Quick overview: stage, days, ATS, provider"
+	@echo "  make status-active                Active applications only (no rejected/ghosted)"
 	@echo "  make stats                        Application statistics & metrics"
 	@echo "  make effectiveness                Outcome vs ATS score analysis"
 	@echo "  make report [FORMAT=markdown]     Application report + funnel analytics"
@@ -1145,6 +1466,11 @@ help:
 	@echo "  make cl-score NAME=...            Cover letter score vs job description"
 	@echo ""
 	@echo "Intelligence:"
+	@echo "  make compare-providers NAME=... [PROVIDERS=gemini,claude]  Side-by-side AI diff"
+	@echo "  make accent NAME=...              Auto-detect company accent color"
+	@echo "  make cache-stats                  Show AI response cache size"
+	@echo "  make cache-clear [MAX_AGE=]       Clear expired cache entries"
+	@echo "  make predict [NAME=...] [TOP=N]   Interview probability (logistic regression)"
 	@echo "  make trends [SINCE=YYYY-MM]       Keyword trend analysis across job postings"
 	@echo "  make research NAME=...            Company intel (description, stack, news, funding)"
 	@echo "  make discover                     Discover new jobs from configured sources"
@@ -1154,6 +1480,26 @@ help:
 	@echo "  make ats-rank [MIN=70]            Rank all applications by ATS score"
 	@echo "  make question-bank [NAME=...]     Aggregate interview Q&A from all prep.md files"
 	@echo "  make job-fit NAME=...             Personal fit score (salary, remote, location, industry)"
+	@echo ""
+	@echo "Analytics:"
+	@echo "  make ats-history [NAME=...]       ATS score trend per application"
+	@echo "  make funnel [PROVIDER=]           Funnel rates + ATS correlation"
+	@echo "  make analytics                    Full analytics report"
+	@echo ""
+	@echo "Integrations:"
+	@echo "  make notion-diff                  Show Notion ↔ local diff"
+	@echo "  make notion-pull                  Pull Notion status → meta.yml"
+	@echo "  make notion-push                  Push meta.yml → Notion"
+	@echo "  make boards BOARD=gh COMPANY=...  Fetch jobs from Greenhouse/Lever"
+	@echo "  make boards-file                  Batch fetch from data/job-boards.yml"
+	@echo "  make cv-api [PORT=8765]           HTTP API server for external triggers"
+	@echo ""
+	@echo "Smart Automation:"
+	@echo "  make doctor-fix                   Auto-fix common setup issues"
+	@echo "  make semantic MODE=bullets QUERY=...  Semantic bullet/job search (TF-IDF)"
+	@echo "  make smart-followup [CREATE=1] [DAYS=] Stale app follow-up + GitHub Issues"
+	@echo "  make beautify [DRY=1] [CHECK=1]   Normalize YAML formatting"
+	@echo "  make migrate [MIGRATE_TARGET=apps|cv] [DRYRUN=1]  Schema migration"
 	@echo ""
 	@echo "Interview Prep:"
 	@echo "  make elevator-pitch [NAME=...] [CONTEXT=recruiter|networking|interview|cold-call] [AI=]"
@@ -1205,3 +1551,30 @@ help:
 	@echo "  make doctor                       Check all dependencies + API keys"
 	@echo "  make hooks                        Install git pre-commit hooks"
 	@echo "  make clean                        Remove generated files"
+	@echo "  make clean-all                    Remove all generated files (incl. .tex)"
+	@echo "  make preview                      Generate all theme variant PDFs"
+	@echo "  make validate-all                 Validate all cv*.yml against schema"
+	@echo "  make dev-setup                    One-command env setup (venv + deps)"
+	@echo "  make test                         Run unit tests"
+	@echo "  make coverage                     Run tests with HTML coverage report"
+	@echo ""
+	@echo "Template Marketplace:"
+	@echo "  make market-list                  List available templates"
+	@echo "  make market-search QUERY=...      Search templates"
+	@echo "  make market-install NAME=...      Install a template"
+	@echo "  make market-installed             List locally installed templates"
+	@echo ""
+	@echo "Portfolio:"
+	@echo "  make portfolio                    Generate static HTML portfolio (EN)"
+	@echo "  make portfolio-fr                 Generate static HTML portfolio (FR)"
+	@echo ""
+	@echo "Shell Completions:"
+	@echo "  make completions-bash             Install bash tab-completion"
+	@echo "  make completions-fish             Install fish tab-completion"
+	@echo "  make completions-ps1              Show PowerShell install instructions"
+	@echo "  make completions-nu               Show Nushell install instructions"
+	@echo "  (zsh: source scripts/completions.zsh)"
+	@echo ""
+	@echo "Docker:"
+	@echo "  make docker-build [DOCKER_IMAGE=...]   Build Docker image (XeLaTeX + Python)"
+	@echo "  make docker-run TARGET=render          Run make target inside container"
