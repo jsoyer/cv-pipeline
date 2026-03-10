@@ -213,8 +213,23 @@ def main():
     else:
         print("❌ Some required dependencies are missing.\n")
         print("   Install required tools:")
-        print("     brew install texlive chktex gh imagemagick aspell pandoc  (macOS)")
-        print("     sudo apt install texlive-xetex chktex gh imagemagick aspell pandoc  (Linux)")
+        if shutil.which("brew"):
+            print("     brew install texlive chktex gh imagemagick aspell pandoc")
+        elif shutil.which("apt") or shutil.which("apt-get"):
+            print("     sudo apt install texlive-xetex chktex gh imagemagick aspell pandoc")
+        elif shutil.which("dnf"):
+            print("     sudo dnf install texlive-xetex chktex gh ImageMagick aspell pandoc")
+        elif shutil.which("yum"):
+            print("     sudo yum install texlive-xetex chktex gh ImageMagick aspell pandoc")
+        elif shutil.which("pacman"):
+            print("     sudo pacman -S texlive-xetex chktex github-cli imagemagick aspell pandoc")
+        elif shutil.which("zypper"):
+            print("     sudo zypper install texlive-xetex chktex gh ImageMagick aspell pandoc")
+        else:
+            print("     brew install texlive chktex gh imagemagick aspell pandoc  (macOS)")
+            print("     sudo apt install texlive-xetex chktex gh imagemagick aspell pandoc  (Debian/Ubuntu)")
+            print("     sudo dnf install texlive-xetex chktex gh ImageMagick aspell pandoc  (Fedora/RHEL)")
+            print("     sudo pacman -S texlive-xetex chktex github-cli imagemagick aspell pandoc  (Arch)")
         print("   Install required Python modules:")
         print("     pip install pyyaml requests beautifulsoup4")
         return 1

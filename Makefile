@@ -51,14 +51,16 @@ else
     SED_I := sed -i
 endif
 
-# Auto-detect xelatex: PATH → BasicTeX symlink → any TeX Live year → bare name
+# Auto-detect xelatex: PATH → BasicTeX symlink → vanilla TeX Live → Fedora RPM → bare name
 XELATEX ?= $(shell \
     command -v xelatex 2>/dev/null \
     || { [ -f /Library/TeX/texbin/xelatex ] && echo /Library/TeX/texbin/xelatex; } \
     || ls /usr/local/texlive/*/bin/universal-darwin/xelatex 2>/dev/null | sort -V | tail -1 \
-    || ls /usr/local/texlive/*/bin/x86_64-darwin/xelatex 2>/dev/null | sort -V | tail -1 \
-    || ls /usr/local/texlive/*/bin/x86_64-linux/xelatex 2>/dev/null | sort -V | tail -1 \
-    || ls /usr/local/texlive/*/bin/aarch64-linux/xelatex 2>/dev/null | sort -V | tail -1 \
+    || ls /usr/local/texlive/*/bin/x86_64-darwin/xelatex    2>/dev/null | sort -V | tail -1 \
+    || ls /usr/local/texlive/*/bin/x86_64-linux/xelatex     2>/dev/null | sort -V | tail -1 \
+    || ls /usr/local/texlive/*/bin/aarch64-linux/xelatex    2>/dev/null | sort -V | tail -1 \
+    || ls /usr/share/texlive/*/bin/x86_64-linux/xelatex     2>/dev/null | sort -V | tail -1 \
+    || ls /usr/share/texlive/*/bin/aarch64-linux/xelatex    2>/dev/null | sort -V | tail -1 \
     || echo xelatex)
 TEXINPUTS := $(CURDIR)/awesome-cv/:$(TEXINPUTS)
 

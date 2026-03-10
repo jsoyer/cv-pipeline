@@ -39,8 +39,9 @@ def find_xelatex() -> str:
     1. ``XELATEX`` environment variable (explicit override)
     2. ``xelatex`` found anywhere in ``$PATH`` (most installs)
     3. ``/Library/TeX/texbin/xelatex`` — BasicTeX / MacTeX symlink on macOS
-    4. Any TeX Live year under ``/usr/local/texlive/`` (macOS/Linux)
-    5. Fallback to the bare name so the shell surfaces a clear error.
+    4. Any TeX Live year under ``/usr/local/texlive/`` (vanilla TeX Live)
+    5. Fedora/RPM paths under ``/usr/share/texlive/``
+    6. Fallback to the bare name so the shell surfaces a clear error.
     """
     if env := os.environ.get("XELATEX"):
         return env
@@ -54,6 +55,9 @@ def find_xelatex() -> str:
         *sorted(glob.glob("/usr/local/texlive/*/bin/x86_64-darwin/xelatex")),
         *sorted(glob.glob("/usr/local/texlive/*/bin/aarch64-linux/xelatex")),
         *sorted(glob.glob("/usr/local/texlive/*/bin/x86_64-linux/xelatex")),
+        # Fedora / RPM-based: texlive-xetex installs here
+        *sorted(glob.glob("/usr/share/texlive/*/bin/x86_64-linux/xelatex")),
+        *sorted(glob.glob("/usr/share/texlive/*/bin/aarch64-linux/xelatex")),
         "/opt/homebrew/bin/xelatex",
     ]
     for path in candidates:
