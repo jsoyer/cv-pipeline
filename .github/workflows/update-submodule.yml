@@ -44,14 +44,6 @@ jobs:
             git log --oneline "$LOCAL..$REMOTE"
           fi
 
-      - name: 🔄 Update submodule
-        if: steps.check.outputs.has_update == 'true'
-        run: |
-          cd awesome-cv
-          git checkout ${{ steps.check.outputs.remote }}
-          cd ..
-          git add awesome-cv
-
       - name: 📤 Create PR
         if: steps.check.outputs.has_update == 'true'
         env:
@@ -59,20 +51,29 @@ jobs:
         run: |
           BRANCH="deps/update-awesome-cv"
           COMMITS="${{ steps.check.outputs.commits }}"
+          REMOTE="${{ steps.check.outputs.remote }}"
 
-          # Check if branch already exists
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Update submodule pointer
+          cd awesome-cv && git checkout "$REMOTE" && cd ..
+          git add awesome-cv
+
+          # Create or reset branch
           if git ls-remote --heads origin "$BRANCH" | grep -q "$BRANCH"; then
-            echo "⚠️  PR branch already exists, updating..."
             git fetch origin "$BRANCH"
             git checkout "$BRANCH"
-            git merge main --no-edit || true
+            git merge --no-edit origin/main || true
+            git add awesome-cv
           else
             git checkout -b "$BRANCH"
           fi
 
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git commit -m "deps: update awesome-cv submodule ($COMMITS new commits)"
+          # Commit only if there are staged changes
+          if ! git diff --cached --quiet; then
+            git commit -m "deps: update awesome-cv submodule ($COMMITS new commit(s))"
+          fi
           git push -u origin "$BRANCH" --force
 
           # Create or update PR
