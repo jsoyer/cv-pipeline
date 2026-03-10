@@ -257,6 +257,30 @@ def _check_completeness(data: dict) -> dict:
     }
 
 
+def _check_duplicates(bullets: list) -> dict:
+    """Detect near-duplicate bullets using word overlap (Jaccard similarity)."""
+
+    def _words(text: str) -> set:
+        return {w for w in re.findall(r"[a-z]{3,}", text.lower()) if w not in STOP_WORDS}
+
+    duplicates = []
+    for i in range(len(bullets)):
+        for j in range(i + 1, len(bullets)):
+            w1, w2 = _words(bullets[i]), _words(bullets[j])
+            if not w1 or not w2:
+                continue
+            jaccard = len(w1 & w2) / len(w1 | w2)
+            if jaccard >= 0.6:
+                duplicates.append((bullets[i][:60], bullets[j][:60], round(jaccard, 2)))
+
+    score = max(0, 100 - len(duplicates) * 20)
+    return {
+        "score": score,
+        "duplicates": duplicates[:5],
+        "detail": (f"{len(duplicates)} near-duplicate pair(s) found" if duplicates else "No near-duplicates"),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Main audit function
 # ---------------------------------------------------------------------------
