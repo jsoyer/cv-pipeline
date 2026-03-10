@@ -6,7 +6,7 @@ Actions performed:
   1. Update meta.yml (outcome field) + git commit + push
   2. Post to Slack (SLACK_WEBHOOK_URL)
   3. Post to Discord (DISCORD_WEBHOOK_URL)
-  4. Update Notion entry (NOTION_TOKEN + NOTION_DB_ID)
+  4. Update Notion entry (NOTION_TOKEN + NOTION_DATABASE_ID)
   5. Add GitHub PR label (status:interview / status:offer / status:rejected)
 
 Usage:
@@ -185,9 +185,9 @@ def notify_discord(company: str, position: str, status: str, message: str,
 def update_notion(company: str, position: str, status: str,
                   app_name: str, dry_run: bool) -> bool:
     token = os.environ.get("NOTION_TOKEN", "")
-    db_id = os.environ.get("NOTION_DB_ID", "")
+    db_id = os.environ.get("NOTION_DATABASE_ID", "") or os.environ.get("NOTION_DB_ID", "")
     if not token or not db_id:
-        print("   ⚠️  Notion: NOTION_TOKEN or NOTION_DB_ID not set — skipping")
+        print("   ⚠️  Notion: NOTION_TOKEN or NOTION_DATABASE_ID not set — skipping")
         return False
     if requests is None:
         print("   ⚠️  Notion: requests not installed — skipping")

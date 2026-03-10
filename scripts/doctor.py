@@ -318,7 +318,7 @@ def _fix_env_file() -> bool:
             "MISTRAL_API_KEY=\n"
             "SLACK_WEBHOOK_URL=\n"
             "NOTION_TOKEN=\n"
-            "NOTION_DB_ID=\n",
+            "NOTION_DATABASE_ID=\n",
             encoding="utf-8",
         )
         print(f"  {OK} Created .env template — fill in your API keys")
