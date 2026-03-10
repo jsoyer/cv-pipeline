@@ -19,7 +19,7 @@
        doctor-fix semantic smart-followup \
        beautify migrate \
        market-list market-search market-install market-installed \
-       portfolio portfolio-fr docker-build docker-run
+       portfolio portfolio-fr
 
 # Auto-load .env if present (for GEMINI_API_KEY)
 -include .env
@@ -39,8 +39,6 @@ LANG :=
 # Usage: make tailor NAME=... AI=claude
 AI ?= gemini
 
-# Docker image name (used by make docker-build / make docker-run)
-DOCKER_IMAGE ?= ghcr.io/janedoe/cv-pipeline
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME), Darwin)
@@ -1408,23 +1406,6 @@ portfolio-fr:
 # Docker
 # ---------------------------------------------------------------------------
 
-# Build Docker image
-# Usage: make docker-build
-#        make docker-build DOCKER_IMAGE=myrepo/cv-pipeline
-docker-build:
-	docker build -t $(DOCKER_IMAGE):latest .
-
-# Run any make target inside the container
-# Usage: make docker-run TARGET=render
-#        make docker-run TARGET="app NAME=2026-02-acme"
-docker-run:
-	@test -n "$(TARGET)" || (echo "Usage: make docker-run TARGET=render" && exit 1)
-	docker run --rm \
-		-v "$(CURDIR)/data:/cv/data" \
-		-v "$(CURDIR)/applications:/cv/applications" \
-		--env-file .env \
-		$(DOCKER_IMAGE):latest \
-		make $(TARGET)
 
 help:
 	@echo "📄 CV Build System"
@@ -1585,6 +1566,4 @@ help:
 	@echo "  make completions-nu               Show Nushell install instructions"
 	@echo "  (zsh: source scripts/completions.zsh)"
 	@echo ""
-	@echo "Docker:"
-	@echo "  make docker-build [DOCKER_IMAGE=...]   Build Docker image (XeLaTeX + Python)"
-	@echo "  make docker-run TARGET=render          Run make target inside container"
+
