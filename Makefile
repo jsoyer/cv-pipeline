@@ -44,14 +44,22 @@ DOCKER_IMAGE ?= ghcr.io/janedoe/cv-pipeline
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME), Darwin)
-    XELATEX ?= /usr/local/texlive/2025basic/bin/universal-darwin/xelatex
     OPEN_CMD := open
     SED_I := sed -i ''
 else
-    XELATEX ?= xelatex
     OPEN_CMD := xdg-open
     SED_I := sed -i
 endif
+
+# Auto-detect xelatex: PATH → BasicTeX symlink → any TeX Live year → bare name
+XELATEX ?= $(shell \
+    command -v xelatex 2>/dev/null \
+    || { [ -f /Library/TeX/texbin/xelatex ] && echo /Library/TeX/texbin/xelatex; } \
+    || ls /usr/local/texlive/*/bin/universal-darwin/xelatex 2>/dev/null | sort -V | tail -1 \
+    || ls /usr/local/texlive/*/bin/x86_64-darwin/xelatex 2>/dev/null | sort -V | tail -1 \
+    || ls /usr/local/texlive/*/bin/x86_64-linux/xelatex 2>/dev/null | sort -V | tail -1 \
+    || ls /usr/local/texlive/*/bin/aarch64-linux/xelatex 2>/dev/null | sort -V | tail -1 \
+    || echo xelatex)
 TEXINPUTS := $(CURDIR)/awesome-cv/:$(TEXINPUTS)
 
 # Use venv Python if available, else fall back to system python3

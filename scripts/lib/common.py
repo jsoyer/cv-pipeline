@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import glob
 import logging
 import os
+import shutil
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -14,6 +16,7 @@ except ImportError:
     yaml = None
 
 __all__ = [
+    "find_xelatex",
     "load_env",
     "load_meta",
     "require_yaml",
@@ -27,6 +30,37 @@ __all__ = [
 
 REPO_ROOT: Path = Path(__file__).resolve().parent.parent.parent
 SCRIPTS_DIR: Path = REPO_ROOT / "scripts"
+
+
+def find_xelatex() -> str:
+    """Auto-detect the xelatex binary across platforms.
+
+    Resolution order:
+    1. ``XELATEX`` environment variable (explicit override)
+    2. ``xelatex`` found anywhere in ``$PATH`` (most installs)
+    3. ``/Library/TeX/texbin/xelatex`` — BasicTeX / MacTeX symlink on macOS
+    4. Any TeX Live year under ``/usr/local/texlive/`` (macOS/Linux)
+    5. Fallback to the bare name so the shell surfaces a clear error.
+    """
+    if env := os.environ.get("XELATEX"):
+        return env
+
+    if found := shutil.which("xelatex"):
+        return found
+
+    candidates = [
+        "/Library/TeX/texbin/xelatex",  # BasicTeX / MacTeX (macOS)
+        *sorted(glob.glob("/usr/local/texlive/*/bin/universal-darwin/xelatex")),
+        *sorted(glob.glob("/usr/local/texlive/*/bin/x86_64-darwin/xelatex")),
+        *sorted(glob.glob("/usr/local/texlive/*/bin/aarch64-linux/xelatex")),
+        *sorted(glob.glob("/usr/local/texlive/*/bin/x86_64-linux/xelatex")),
+        "/opt/homebrew/bin/xelatex",
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            return path
+
+    return "xelatex"
 
 # Default timeouts (seconds)
 TIMEOUT_HTTP: int = 15

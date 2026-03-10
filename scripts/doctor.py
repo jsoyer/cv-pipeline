@@ -7,14 +7,14 @@ import subprocess
 import sys
 from pathlib import Path
 
-from lib.common import REPO_ROOT, load_env
+from lib.common import REPO_ROOT, find_xelatex, load_env
 
 # ---------------------------------------------------------------------------
 # Tool checks
 # ---------------------------------------------------------------------------
 
 TOOL_CHECKS = [
-    ("xelatex",  "XeLaTeX (LaTeX engine)",          "/usr/local/texlive/2025basic/bin/universal-darwin/xelatex"),
+    ("xelatex",  "XeLaTeX (LaTeX engine)",          find_xelatex()),
     ("chktex",   "ChkTeX (LaTeX linter)",            None),
     ("gh",       "GitHub CLI",                       None),
     ("python3",  "Python 3",                         None),

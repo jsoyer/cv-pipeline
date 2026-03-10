@@ -31,12 +31,8 @@ try:
 except ImportError:
     HAS_WATCHDOG = False
 
-# Detect xelatex
-import platform
-if platform.system() == "Darwin":
-    XELATEX = os.environ.get("XELATEX", "/usr/local/texlive/2025basic/bin/universal-darwin/xelatex")
-else:
-    XELATEX = os.environ.get("XELATEX", "xelatex")
+from lib.common import find_xelatex
+XELATEX = find_xelatex()
 
 TEXINPUTS = str(REPO_ROOT / "awesome-cv") + ":" + os.environ.get("TEXINPUTS", "")
 
