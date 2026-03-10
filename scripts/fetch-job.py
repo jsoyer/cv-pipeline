@@ -111,12 +111,12 @@ def _extract_from_url(url):
         return m.group(1).replace("-", " ").title(), ""
 
     # Workday: https://COMPANY.wd1.myworkdayjobs.com/...
-    m = re.search(r"([^.]+)\.wd\d+\.myworkdayjobs\.com", url)
+    m = re.search(r"://([^.]+)\.wd\d+\.myworkdayjobs\.com", url)
     if m:
         return m.group(1).replace("-", " ").title(), ""
 
     # Ashby subdomain: https://COMPANY.ashbyhq.com/...
-    m = re.search(r"([^.]+)\.ashbyhq\.com", url)
+    m = re.search(r"://([^.]+)\.ashbyhq\.com", url)
     if m:
         return m.group(1).replace("-", " ").title(), ""
 

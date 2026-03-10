@@ -7,18 +7,26 @@ This is a personal CV repository, but the automation tooling may be useful to ot
 ```bash
 git clone --recurse-submodules https://github.com/jsoyer/cv-pipeline.git
 cd cv-pipeline
+make install-deps   # Install system dependencies (TeX Live, fonts, uv)
+make dev-setup      # Create venv + install Python dependencies
+make doctor         # Verify everything is set up correctly
+```
+
+Or manually:
+
+```bash
 pip install -r requirements.txt
-make doctor    # Check all dependencies
+make doctor
 ```
 
 ## Project Structure
 
 - `data/` — YAML source of truth (CV content, schema, templates)
-- `scripts/` — 67 Python scripts + shared library (`scripts/lib/`)
+- `scripts/` — 80+ Python scripts + shared library (`scripts/lib/`)
 - `scripts/lib/` — Shared modules: `ai.py` (multi-provider AI), `common.py` (utilities)
 - `examples/meta.yml` — Sample application metadata (see below)
-- `Makefile` — 83+ build/automation targets
-- `.github/workflows/` — 14 CI/CD workflows
+- `Makefile` — 80+ build/automation targets
+- `.github/workflows/` — 16 CI/CD workflows
 
 ## Application Metadata
 
@@ -60,8 +68,8 @@ Tests cover rendering (`test_render.py`), AI providers (`test_ai.py`), and share
 - **Conventional commits**: `feat:`, `fix:`, `refactor:`, `chore:`, `style:`
 - **Branch naming**: `apply/YYYY-MM-company` for applications
 - **CV max 2 pages, Cover Letter max 1 page** — CI enforces this
-- **Python 3.8+** with `pyyaml`, `requests`, `beautifulsoup4`
+- **Python 3.8+** with `pyyaml`, `requests`, `beautifulsoup4`, `jsonschema`
 
 ## License
 
-CV content is personal and proprietary. The [Awesome-CV](https://github.com/posquit0/Awesome-CV) template is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). Automation scripts are MIT-licensed.
+The [Awesome-CV](https://github.com/posquit0/Awesome-CV) template is licensed under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). All automation scripts in this repository are MIT-licensed.

@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="docs/sample-cv.pdf">
-    <img src="https://github.com/jsoyer/cv-pipeline/blob/main/docs/assets/social-preview.svg" alt="CV Pipeline" width="600"/>
+    <img src="docs/assets/social-preview.svg" alt="CV Pipeline" width="600"/>
   </a>
 </p>
 

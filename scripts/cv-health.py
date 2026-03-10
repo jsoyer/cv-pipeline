@@ -141,7 +141,7 @@ def _check_action_verbs(bullets: list) -> dict:
         "detail": (
             f"{strong}/{total} strong verbs ({strong_pct:.0f}%), "
             f"{weak} weak ({weak_pct:.0f}%)"
-            + (f" — replace: {', '.join(set(weak_examples)[:3])}" if weak_examples else "")
+            + (f" — replace: {', '.join(list(set(weak_examples))[:3])}" if weak_examples else "")
         ),
     }
 
@@ -257,6 +257,30 @@ def _check_completeness(data: dict) -> dict:
     }
 
 
+def _check_duplicates(bullets: list) -> dict:
+    """Detect near-duplicate bullets using word overlap (Jaccard similarity)."""
+
+    def _words(text: str) -> set:
+        return {w for w in re.findall(r"[a-z]{3,}", text.lower()) if w not in STOP_WORDS}
+
+    duplicates = []
+    for i in range(len(bullets)):
+        for j in range(i + 1, len(bullets)):
+            w1, w2 = _words(bullets[i]), _words(bullets[j])
+            if not w1 or not w2:
+                continue
+            jaccard = len(w1 & w2) / len(w1 | w2)
+            if jaccard >= 0.6:
+                duplicates.append((bullets[i][:60], bullets[j][:60], round(jaccard, 2)))
+
+    score = max(0, 100 - len(duplicates) * 20)
+    return {
+        "score": score,
+        "duplicates": duplicates[:5],
+        "detail": (f"{len(duplicates)} near-duplicate pair(s) found" if duplicates else "No near-duplicates"),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Main audit function
 # ---------------------------------------------------------------------------
@@ -275,15 +299,17 @@ def audit(data: dict) -> dict:
     prof    = _check_profile(profile)
     rept    = _check_repetition(bullets, profile)
     compl   = _check_completeness(data)
+    dupes   = _check_duplicates(bullets)
 
     # Weighted overall score
     weights = {
-        "quantification": (quant["score"],   0.25),
+        "quantification": (quant["score"],   0.20),
         "action_verbs":   (verbs["score"],   0.20),
         "bullet_length":  (lengths["score"], 0.15),
         "profile":        (prof["score"],    0.15),
-        "repetition":     (rept["score"],    0.15),
+        "repetition":     (rept["score"],    0.10),
         "completeness":   (compl["score"],   0.10),
+        "duplicates":     (dupes["score"],   0.10),
     }
     overall = int(sum(s * w for s, w in weights.values()))
 
@@ -301,6 +327,7 @@ def audit(data: dict) -> dict:
         "bullet_length":   lengths,
         "profile":         prof,
         "repetition":      rept,
+        "duplicates":      dupes,
         "completeness":    compl,
     }
 

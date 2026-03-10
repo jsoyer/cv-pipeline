@@ -604,6 +604,251 @@ def render_cv(data, theme=None, pdfa=False, draft=False):
     return "\n".join(sections)
 
 
+MODERNCV_TEMPLATES = ("classic", "casual", "banking", "oldstyle", "fancy")
+
+
+def _moderncv_entry_items(items: list) -> str:
+    """Render experience items as LaTeX itemize for ModernCV."""
+    if not items:
+        return ""
+    lines = ["\\begin{itemize}[noitemsep,topsep=2pt]"]
+    for it in items:
+        text = process_text(it["text"]) if isinstance(it, dict) else process_text(str(it))
+        label = it.get("label") if isinstance(it, dict) else None
+        if label:
+            lines.append(f"  \\item \\textbf{{{process_text(label)}:}} {text}")
+        else:
+            lines.append(f"  \\item {text}")
+    lines.append("\\end{itemize}")
+    return "\n".join(lines)
+
+
+def render_cv_moderncv(data: dict, style: str = "classic", color: str = "blue") -> str:
+    """Render CV.tex using the ModernCV package (TeX Live built-in)."""
+    p = data["personal"]
+    first = escape_latex(p["first_name"])
+    last = escape_latex(p["last_name"])
+    full_name = f"{p['first_name']} {p['last_name']}"
+
+    out: list[str] = []
+
+    out.append(f"""\
+%!TEX TS-program = xelatex
+%!TEX encoding = UTF-8 Unicode
+% {full_name} -- Resume (ModernCV template)
+% Auto-generated from data/ by scripts/render.py
+
+\\documentclass[11pt,a4paper,sans]{{moderncv}}
+\\moderncvstyle{{{style}}}
+\\moderncvcolor{{{color}}}
+
+\\usepackage[scale=0.85,top=1.2cm,bottom=1.2cm]{{geometry}}
+\\usepackage{{xltxtra,xunicode}}
+\\usepackage[T1]{{fontenc}}
+\\usepackage[utf8]{{inputenc}}
+\\usepackage{{enumitem}}
+
+\\name{{{first}}}{{{last}}}
+\\title{{{process_text(p["position"])}}}
+\\address{{{escape_latex(p["address"])}}}{{}}{{}}
+\\phone[mobile]{{{escape_latex(p["mobile"])}}}
+\\email{{{escape_latex(p["email"])}}}
+\\social[linkedin]{{{escape_latex(p["linkedin"])}}}
+""")
+
+    out.append("\\begin{document}")
+    out.append("\\makecvtitle")
+    out.append("")
+
+    out.append("\\section{Profile}")
+    out.append(f"\\cvitem{{}}{{{process_text(data['profile'])}}}")
+    out.append("")
+
+    out.append("\\section{Skills}")
+    for s in data.get("skills", []):
+        out.append(f"\\cvitem{{{process_text(s['category'])}}}{{{process_text(s['items'])}}}")
+    out.append("")
+
+    if data.get("key_wins"):
+        out.append("\\section{Key Achievements}")
+        for w in data["key_wins"]:
+            title = process_text(w["title"])
+            text = process_text(w["text"])
+            out.append(f"\\cvitem{{\\textbf{{{title}}}}}{{{text}}}")
+        out.append("")
+
+    out.append("\\section{Work Experience}")
+    for e in data.get("experience", []):
+        items_tex = _moderncv_entry_items(e.get("items", []))
+        out.append(
+            f"\\cventry{{{e['dates']}}}{{{process_text(e['title'])}}}"
+            f"{{{process_text(e['company'])}}}{{{process_text(e['location'])}}}{{}}{{"
+        )
+        if items_tex:
+            out.append(items_tex)
+        out.append("}")
+    out.append("")
+
+    if data.get("early_career"):
+        out.append("\\section{Early Career}")
+        for e in data["early_career"]:
+            out.append(
+                f"\\cventry{{{e['dates']}}}{{{process_text(e['title'])}}}"
+                f"{{{process_text(e['company'])}}}{{{process_text(e['location'])}}}{{}}{{}}",
+            )
+        out.append("")
+
+    out.append("\\section{Education}")
+    for e in data.get("education", []):
+        note = process_text(e["note"]) if e.get("note") else ""
+        out.append(
+            f"\\cventry{{{e['dates']}}}{{{process_text(e['degree'])}}}"
+            f"{{{process_text(e['school'])}}}{{{process_text(e['location'])}}}{{}}{{{note}}}",
+        )
+    out.append("")
+
+    if data.get("certifications"):
+        out.append("\\section{Certifications}")
+        for c in data["certifications"]:
+            out.append(f"\\cvitem{{{c['date']}}}{{{process_text(c['name'])} -- {process_text(c['institution'])}}}")
+        out.append("")
+
+    if data.get("languages"):
+        out.append("\\section{Languages}")
+        out.append(f"\\cvitem{{}}{{{', '.join(escape_latex(l) for l in data['languages'])}}}")
+        out.append("")
+
+    out.append("\\end{document}")
+    out.append("")
+    return "\n".join(out)
+
+
+# ---------------------------------------------------------------------------
+# Deedy-style renderer (article, 2-column, 1-page compact)
+# ---------------------------------------------------------------------------
+
+
+def render_cv_deedy(data: dict) -> str:
+    """Render a compact 1-page Deedy-inspired CV using article + multicol."""
+    p = data["personal"]
+    full_name = f"{p['first_name']} {p['last_name']}"
+
+    out: list[str] = []
+
+    out.append(f"""\
+%!TEX TS-program = xelatex
+%!TEX encoding = UTF-8 Unicode
+% {full_name} -- Resume (Deedy-style, 1 page)
+% Auto-generated from data/ by scripts/render.py
+
+\\documentclass[a4paper,10pt]{{article}}
+\\usepackage[left=1.4cm,right=1.4cm,top=1.0cm,bottom=1.0cm]{{geometry}}
+\\usepackage{{xltxtra,xunicode}}
+\\usepackage{{fontspec}}
+\\usepackage{{multicol}}
+\\usepackage{{titlesec}}
+\\usepackage{{enumitem}}
+\\usepackage{{hyperref}}
+\\usepackage{{xcolor}}
+
+\\definecolor{{accent}}{{HTML}}{{1A5276}}
+\\setlength{{\\columnsep}}{{1.8em}}
+\\setlength{{\\columnseprule}}{{0.4pt}}
+
+\\titleformat{{\\section}}{{\\normalsize\\bfseries\\color{{accent}}}}{{}}{{0em}}{{}}[\\titlerule]
+\\titlespacing{{\\section}}{{0pt}}{{5pt}}{{3pt}}
+
+\\setlist[itemize]{{noitemsep,topsep=2pt,leftmargin=1.2em,label={{\\textbullet}}}}
+
+\\hypersetup{{hidelinks}}
+\\pagestyle{{empty}}
+""")
+
+    out.append("\\begin{document}")
+    out.append("")
+
+    out.append("% ---- Header ----")
+    out.append("{\\centering")
+    out.append(f"  {{\\LARGE\\bfseries {escape_latex(full_name)}}}\\\\[3pt]")
+    contact = (
+        f"{escape_latex(p['address'])} "
+        f"\\quad\\textbar\\quad {escape_latex(p['mobile'])} "
+        f"\\quad\\textbar\\quad \\href{{mailto:{escape_latex(p['email'])}}}{{{escape_latex(p['email'])}}} "
+        f"\\quad\\textbar\\quad linkedin.com/in/{escape_latex(p['linkedin'])}"
+    )
+    out.append(f"  {{\\small {contact}}}\\\\[2pt]")
+    out.append(f"  {{\\itshape\\small {process_text(p['position'])}}}")
+    out.append("\\par}")
+    out.append("\\vspace{5pt}")
+    out.append("\\hrule")
+    out.append("\\vspace{8pt}")
+    out.append("")
+
+    out.append("\\begin{multicols}{2}")
+    out.append("")
+
+    profile_text = data["profile"]
+    if len(profile_text) > 500:
+        profile_text = profile_text[:497] + "..."
+    out.append("\\section{Profile}")
+    out.append(f"{{\\small {process_text(profile_text)}}}")
+    out.append("")
+
+    out.append("\\section{Skills}")
+    for s in data.get("skills", []):
+        out.append(f"{{\\small\\textbf{{{process_text(s['category'])}:}} {process_text(s['items'])}}}\\\\[2pt]")
+    out.append("")
+
+    out.append("\\section{Education}")
+    for e in data.get("education", []):
+        out.append(
+            f"{{\\small\\textbf{{{process_text(e['degree'])}}}}}\\\\[1pt]"
+            f"{{\\small {process_text(e['school'])}, {process_text(e['location'])} · {e['dates']}}}\\\\[3pt]"
+        )
+    out.append("")
+
+    if data.get("languages"):
+        out.append("\\section{Languages}")
+        out.append(f"{{\\small {', '.join(escape_latex(l) for l in data['languages'])}}}")
+        out.append("")
+
+    out.append("\\columnbreak")
+    out.append("")
+
+    out.append("\\section{Experience}")
+    for e in data.get("experience", [])[:3]:
+        out.append(
+            f"{{\\small\\textbf{{{process_text(e['title'])}}} · {process_text(e['company'])}, "
+            f"{process_text(e['location'])}}}\\\\[1pt]"
+            f"{{\\footnotesize\\itshape {e['dates']}}}\\\\[1pt]"
+        )
+        items = e.get("items", [])
+        if items:
+            out.append("\\begin{itemize}[noitemsep,topsep=1pt]")
+            for it in items[:4]:
+                text = process_text(it["text"]) if isinstance(it, dict) else process_text(str(it))
+                out.append(f"  \\item {{\\small {text}}}")
+            out.append("\\end{itemize}")
+        out.append("\\vspace{4pt}")
+    out.append("")
+
+    if data.get("key_wins"):
+        out.append("\\section{Key Wins}")
+        out.append("\\begin{itemize}")
+        for w in data["key_wins"][:3]:
+            title = process_text(w["title"])
+            text = process_text(w["text"])
+            out.append(f"  \\item {{\\small\\textbf{{{title}:}} {text}}}")
+        out.append("\\end{itemize}")
+        out.append("")
+
+    out.append("\\end{multicols}")
+    out.append("")
+    out.append("\\end{document}")
+    out.append("")
+    return "\n".join(out)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Render CV.tex or CoverLetter.tex from YAML data"
@@ -633,6 +878,12 @@ def main():
     )
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Enable debug logging"
+    )
+    parser.add_argument(
+        "--template",
+        default="awesome-cv",
+        choices=["awesome-cv", "moderncv", "deedy"],
+        help="LaTeX template: awesome-cv (default), moderncv, deedy",
     )
     args = parser.parse_args()
 
@@ -690,6 +941,32 @@ def main():
         print("📄 PDF/A mode enabled")
     if args.draft:
         print("📝 Draft watermark enabled")
+    if args.template != "awesome-cv":
+        print(f"📐 Template: {args.template}")
+
+    if args.template == "moderncv":
+        if is_coverletter:
+            log.error("ModernCV cover letter not supported — use awesome-cv for cover letters")
+            sys.exit(1)
+        default_output = "CV-moderncv.tex"
+        out_path = Path(args.output or default_output)
+        output = render_cv_moderncv(data)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(output)
+        print(f"✅ Rendered {out_path} from {data_path}")
+        return 0
+
+    if args.template == "deedy":
+        if is_coverletter:
+            log.error("Deedy cover letter not supported — use awesome-cv for cover letters")
+            sys.exit(1)
+        default_output = "CV-deedy.tex"
+        out_path = Path(args.output or default_output)
+        output = render_cv_deedy(data)
+        with open(out_path, "w", encoding="utf-8") as f:
+            f.write(output)
+        print(f"✅ Rendered {out_path} from {data_path}")
+        return 0
 
     if is_coverletter:
         # Load personal info from CV data
