@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Jane Doe — Senior Software Engineer">
+  <title>Jane Doe — Senior Software Engineer</title>
+  <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #2d3748;
+            background: #f7f8fc;
+        }
+        a { color: #3182ce; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Hero */
+        .hero {
+            background: #1A2744;
+            color: #fff;
+            padding: 56px 0 48px;
+            text-align: center;
+        }
+        .hero h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.5px; }
+        .hero .position {
+            font-size: 1.15rem;
+            color: #90cdf4;
+            margin-top: 6px;
+            font-weight: 400;
+        }
+        .hero .contact {
+            margin-top: 20px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 18px;
+            font-size: 0.92rem;
+        }
+        .hero .contact a { color: #bee3f8; }
+        .hero .contact a:hover { color: #fff; }
+        .contact-item { display: flex; align-items: center; gap: 5px; }
+
+        /* Layout */
+        .container { max-width: 900px; margin: 0 auto; padding: 0 20px; }
+        main { padding: 40px 0 60px; }
+        section { margin-bottom: 40px; }
+        h2 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1A2744;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            border-bottom: 2px solid #1A2744;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+        }
+
+        /* About */
+        .about-text {
+            background: #fff;
+            border-radius: 8px;
+            padding: 22px 26px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            font-size: 1rem;
+            color: #444;
+            line-height: 1.75;
+        }
+
+        /* Skills */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 16px;
+        }
+        .skill-card {
+            background: #fff;
+            border-radius: 8px;
+            padding: 18px 20px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+        }
+        .skill-card h3 {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #1A2744;
+            margin-bottom: 10px;
+        }
+        .skill-tags { display: flex; flex-wrap: wrap; gap: 7px; }
+        .skill-tag {
+            background: #ebf4ff;
+            color: #2b6cb0;
+            border-radius: 4px;
+            padding: 3px 10px;
+            font-size: 0.82rem;
+            font-weight: 500;
+        }
+
+        /* Experience */
+        .exp-entry {
+            background: #fff;
+            border-radius: 8px;
+            padding: 22px 26px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            margin-bottom: 16px;
+        }
+        .exp-header { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+        .exp-title { font-size: 1.05rem; font-weight: 700; color: #1A2744; }
+        .exp-company { font-size: 0.97rem; font-weight: 600; color: #4a5568; margin-top: 2px; }
+        .exp-dates { font-size: 0.85rem; color: #718096; white-space: nowrap; }
+        .exp-items {
+            margin-top: 14px;
+            list-style: none;
+            padding: 0;
+        }
+        .exp-items li {
+            position: relative;
+            padding-left: 18px;
+            margin-bottom: 7px;
+            font-size: 0.95rem;
+            color: #444;
+        }
+        .exp-items li::before {
+            content: "▸";
+            position: absolute;
+            left: 0;
+            color: #3182ce;
+            font-size: 0.8rem;
+            top: 2px;
+        }
+
+        /* Education */
+        .edu-entry {
+            background: #fff;
+            border-radius: 8px;
+            padding: 18px 24px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+            margin-bottom: 12px;
+        }
+        .edu-degree { font-weight: 700; color: #1A2744; }
+        .edu-school { color: #4a5568; font-size: 0.95rem; margin-top: 3px; }
+        .edu-dates { color: #718096; font-size: 0.85rem; margin-top: 2px; }
+
+        /* Languages */
+        .lang-list { display: flex; flex-wrap: wrap; gap: 12px; }
+        .lang-badge {
+            background: #1A2744;
+            color: #fff;
+            border-radius: 6px;
+            padding: 6px 18px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+        }
+
+        /* Footer */
+        footer {
+            background: #1A2744;
+            color: #90cdf4;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 600px) {
+            .hero h1 { font-size: 1.8rem; }
+            .exp-header { flex-direction: column; }
+        }
+    
+  </style>
+</head>
+<body>
+
+    <header class="hero">
+      <div class="container">
+        <h1>Jane Doe</h1>
+        <p class="position">Senior Software Engineer</p>
+        <div class="contact">
+          <span class="contact-item"><a href="mailto:jane.doe@example.com">jane.doe@example.com</a></span>
+<span class="contact-item"><a href="https://linkedin.com/in/janedoe" target="_blank">LinkedIn/janedoe</a></span>
+<span class="contact-item">San Francisco, CA</span>
+        </div>
+      </div>
+    </header>
+  <div class="container">
+    <main>
+
+    <section id="about">
+      <h2>About</h2>
+      <div class="about-text">Full-stack engineer with 8+ years of experience building scalable web applications and distributed systems. Passionate about clean code, developer tooling, and mentoring junior engineers. Led migration of monolithic architecture to microservices, reducing deploy times by 70%.</div>
+    </section>
+
+    <section id="skills">
+      <h2>Skills</h2>
+      <div class="skills-grid">
+      <div class="skill-card">
+        <h3>Languages</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">Python</span>
+          <span class="skill-tag">TypeScript</span>
+          <span class="skill-tag">Go</span>
+          <span class="skill-tag">Rust</span>
+          <span class="skill-tag">SQL</span>
+        </div>
+      </div>
+      <div class="skill-card">
+        <h3>Frameworks</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">React</span>
+          <span class="skill-tag">Next.js</span>
+          <span class="skill-tag">FastAPI</span>
+          <span class="skill-tag">Django</span>
+          <span class="skill-tag">Express</span>
+        </div>
+      </div>
+      <div class="skill-card">
+        <h3>Infrastructure</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">AWS</span>
+          <span class="skill-tag">Docker</span>
+          <span class="skill-tag">Kubernetes</span>
+          <span class="skill-tag">Terraform</span>
+          <span class="skill-tag">GitHub Actions</span>
+        </div>
+      </div>
+      <div class="skill-card">
+        <h3>Data</h3>
+        <div class="skill-tags">
+          <span class="skill-tag">PostgreSQL</span>
+          <span class="skill-tag">Redis</span>
+          <span class="skill-tag">Elasticsearch</span>
+          <span class="skill-tag">Kafka</span>
+          <span class="skill-tag">DynamoDB</span>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <section id="experience">
+      <h2>Experience</h2>
+      <div class="exp-entry">
+        <div class="exp-header">
+          <div>
+            <div class="exp-title">Senior Software Engineer</div>
+            <div class="exp-company">TechCorp Inc.</div>
+          </div>
+          <span class="exp-dates">2022 – Present</span>
+        </div>
+          <ul class="exp-items">
+            <li>Architected and deployed <strong>event-driven microservices</strong> processing 10M+ events/day on AWS ECS with Kafka, achieving 99.95% uptime</li>
+            <li>Led cross-functional team of 6 engineers to rebuild the billing system, reducing revenue leakage by <strong>$2.4M annually</strong></li>
+            <li>Designed CI/CD pipeline with GitHub Actions and ArgoCD, cutting deployment frequency from weekly to <strong>15+ deploys/day</strong></li>
+          </ul>
+      </div>
+      <div class="exp-entry">
+        <div class="exp-header">
+          <div>
+            <div class="exp-title">Software Engineer</div>
+            <div class="exp-company">StartupXYZ</div>
+          </div>
+          <span class="exp-dates">2019 – 2022</span>
+        </div>
+          <ul class="exp-items">
+            <li>Built real-time analytics dashboard with <strong>React</strong> and <strong>WebSocket</strong>, serving 50K+ concurrent users during peak traffic</li>
+            <li>Implemented distributed caching layer with Redis, reducing API response times by <strong>60%</strong> (p99 from 800ms to 320ms)</li>
+            <li>Contributed to open-source internal framework, now used by 3 external companies</li>
+          </ul>
+      </div>
+    </section>
+
+    <section id="education">
+      <h2>Education</h2>
+      <div class="edu-entry">
+        <div class="edu-degree">B.S. Computer Science</div>
+        <div class="edu-school">University of California, Berkeley, Berkeley, CA</div>
+        <div class="edu-dates">2013 – 2017</div>
+      </div>
+    </section>
+
+    <section id="languages">
+      <h2>Languages</h2>
+      <div class="lang-list">
+        <span class="lang-badge">English (Native)</span>
+        <span class="lang-badge">Spanish (Intermediate, B2)</span>
+      </div>
+    </section>
+    </main>
+  </div>
+  <footer>
+    <div class="container">Jane Doe &mdash; Generated from CV data</div>
+  </footer>
+</body>
+</html>
