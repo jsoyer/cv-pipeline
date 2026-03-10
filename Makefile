@@ -12,6 +12,7 @@
        cv-keywords blind-spots current pipeline \
        status-active completions-bash completions-fish completions-ps1 completions-nu \
        test coverage preview clean-all dev-setup validate-all predict \
+       install-deps submodule-update \
        compare-providers accent cache-stats cache-clear \
        ats-history funnel analytics \
        notion-pull notion-push notion-diff \
@@ -1182,6 +1183,89 @@ clean-all: clean
 	rm -f *.tex
 	rm -f applications/*/*.tex
 
+# Install all system dependencies (TeX Live, uv, gh, poppler…)
+# Detects OS: macOS (brew), Debian/Ubuntu (apt), Fedora/RHEL (dnf), Arch (pacman), Windows (scoop)
+install-deps:
+	@echo "Detecting OS..."
+ifeq ($(UNAME), Darwin)
+	@echo "  macOS detected — using Homebrew"
+	@command -v brew > /dev/null 2>&1 || { echo "  ❌ Homebrew not found. Install from https://brew.sh"; exit 1; }
+	@echo "  Installing MacTeX (no-GUI) — this is large (~4 GB), be patient..."
+	@brew list --cask mactex-no-gui > /dev/null 2>&1 || brew install --cask mactex-no-gui
+	@echo "  Installing CLI tools..."
+	@brew list uv          > /dev/null 2>&1 || brew install uv
+	@brew list gh          > /dev/null 2>&1 || brew install gh
+	@brew list git         > /dev/null 2>&1 || brew install git
+	@brew list poppler     > /dev/null 2>&1 || brew install poppler
+	@brew list imagemagick > /dev/null 2>&1 || brew install imagemagick
+	@brew list aspell      > /dev/null 2>&1 || brew install aspell
+	@echo "  Installing TeX Live packages..."
+	@tlmgr init-usertree 2>/dev/null || true
+	@tlmgr install fontawesome6 tcolorbox environ trimspaces 2>/dev/null || true
+	@echo "  ✅ macOS dependencies installed"
+else ifeq ($(UNAME), Linux)
+	@echo "  Linux detected — detecting distro..."
+	@if [ -f /etc/debian_version ] || grep -qi "ubuntu\|debian" /etc/os-release 2>/dev/null; then \
+		echo "  Debian/Ubuntu detected"; \
+		sudo apt-get update -qq; \
+		sudo apt-get install -y -qq \
+			texlive-xetex texlive-fonts-extra texlive-fonts-recommended \
+			texlive-latex-extra texlive-lang-french \
+			poppler-utils imagemagick aspell git make \
+			fonts-open-sans curl; \
+		echo "  Installing uv..."; \
+		curl -LsSf https://astral.sh/uv/install.sh | sh; \
+		echo "  Installing gh CLI..."; \
+		command -v gh > /dev/null 2>&1 || { \
+			curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+				| sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg; \
+			echo "deb [arch=$$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+				| sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null; \
+			sudo apt-get update -qq && sudo apt-get install -y gh; \
+		}; \
+		tlmgr init-usertree 2>/dev/null || true; \
+		tlmgr install fontawesome6 tcolorbox environ trimspaces 2>/dev/null || true; \
+		echo "  ✅ Debian/Ubuntu dependencies installed"; \
+	elif grep -qi "fedora\|rhel\|centos\|rocky\|alma" /etc/os-release 2>/dev/null; then \
+		echo "  Fedora/RHEL detected"; \
+		sudo dnf install -y \
+			texlive-xetex texlive-fontawesome texlive-tcolorbox \
+			texlive-collection-fontsrecommended \
+			poppler-utils ImageMagick aspell git make curl; \
+		curl -LsSf https://astral.sh/uv/install.sh | sh; \
+		sudo dnf install -y gh 2>/dev/null || \
+			{ sudo dnf install -y 'dnf-command(config-manager)'; \
+			  sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo; \
+			  sudo dnf install -y gh; }; \
+		echo "  ✅ Fedora/RHEL dependencies installed"; \
+	elif grep -qi "arch\|manjaro\|endeavour" /etc/os-release 2>/dev/null; then \
+		echo "  Arch Linux detected"; \
+		sudo pacman -Sy --noconfirm \
+			texlive-xetex texlive-fontsextra \
+			poppler imagemagick aspell git make curl; \
+		curl -LsSf https://astral.sh/uv/install.sh | sh; \
+		command -v gh > /dev/null 2>&1 || { \
+			command -v yay > /dev/null 2>&1 && yay -S --noconfirm github-cli \
+			|| echo "  ⚠️  Install gh manually: https://cli.github.com"; }; \
+		echo "  ✅ Arch dependencies installed"; \
+	else \
+		echo "  ⚠️  Unknown distro — install manually:"; \
+		echo "     TeX Live (xetex + fonts-extra), poppler, imagemagick, aspell, git, gh"; \
+		echo "     uv: curl -LsSf https://astral.sh/uv/install.sh | sh"; \
+	fi
+else
+	@echo "  ⚠️  Unknown OS ($(UNAME)) — install manually:"
+	@echo "     TeX Live, uv, gh, poppler, imagemagick, aspell"
+endif
+
+# Pull latest commits from the awesome-cv submodule remote
+submodule-update:
+	@echo "Fetching latest awesome-cv..."
+	@git submodule update --remote --merge awesome-cv
+	@git diff --name-only awesome-cv | grep -q . \
+		&& echo "  ✅ awesome-cv updated — commit the change when ready" \
+		|| echo "  ✅ awesome-cv already up to date"
+
 # One-command dev environment setup
 dev-setup:
 	@echo "Setting up development environment..."
@@ -1535,6 +1619,8 @@ help:
 	@echo "  make archive-app NAME=... [OUTCOME=...]  Enhanced archive with summary + git tag"
 	@echo "  make linkedin [PUSH=true]         LinkedIn sync (dry-run default)"
 
+	@echo "  make install-deps                  Install system deps (TeX Live, uv, gh, poppler…)"
+	@echo "  make submodule-update              Pull latest awesome-cv template commits"
 	@echo "  make doctor                       Check all dependencies + API keys"
 	@echo "  make hooks                        Install git pre-commit hooks"
 	@echo "  make clean                        Remove generated files"
