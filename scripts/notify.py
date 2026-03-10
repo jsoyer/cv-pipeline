@@ -107,6 +107,38 @@ def update_meta_yml(app_dir: Path, status: str, message: str, dry_run: bool) -> 
     return True
 
 
+def _slack_blocks(company: str, position: str, status: str, message: str, app_name: str) -> dict:
+    """Build a Slack Block Kit payload for rich notification formatting."""
+    emoji = STATUS_EMOJI.get(status, "📋")
+    color_map = {
+        "applied":   "#3B82F6",
+        "interview": "#EAB308",
+        "offer":     "#22C55E",
+        "rejected":  "#EF4444",
+        "ghosted":   "#94A3B8",
+    }
+    color = color_map.get(status, "#94A3B8")
+
+    header_text = f"{emoji} *{company}* — Status updated to *{status.upper()}*"
+    fields = [
+        {"type": "mrkdwn", "text": f"*Position*\n{position}"},
+        {"type": "mrkdwn", "text": f"*Application*\n`{app_name}`"},
+    ]
+    blocks = [
+        {"type": "section", "text": {"type": "mrkdwn", "text": header_text}},
+        {"type": "section", "fields": fields},
+    ]
+    if message:
+        blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": f"💬 _{message}_"}})
+    blocks.append({"type": "divider"})
+    blocks.append({"type": "context", "elements": [{"type": "mrkdwn", "text": f"CV Pipeline • {app_name}"}]})
+
+    return {
+        "text": f"{emoji} {company} → {status.upper()}",
+        "attachments": [{"color": color, "blocks": blocks}],
+    }
+
+
 def notify_slack(company: str, position: str, status: str, message: str,
                  app_name: str, dry_run: bool) -> bool:
     webhook = os.environ.get("SLACK_WEBHOOK_URL", "")
@@ -117,16 +149,10 @@ def notify_slack(company: str, position: str, status: str, message: str,
         print("   ⚠️  Slack: requests not installed — skipping")
         return False
 
-    emoji = STATUS_EMOJI.get(status, "📋")
-    text = f"{emoji} *{company}* — {position}\nStatus: *{status.upper()}*"
-    if message:
-        text += f"\n> {message}"
-    text += f"\n_Application: {app_name}_"
-
-    payload = {"text": text}
+    payload = _slack_blocks(company, position, status, message, app_name)
 
     if dry_run:
-        print(f"   [DRY] Slack: {text[:80]}…")
+        print(f"   [DRY] Slack: {payload['text'][:80]}…")
         return True
 
     try:

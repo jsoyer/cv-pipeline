@@ -141,7 +141,7 @@ def _check_action_verbs(bullets: list) -> dict:
         "detail": (
             f"{strong}/{total} strong verbs ({strong_pct:.0f}%), "
             f"{weak} weak ({weak_pct:.0f}%)"
-            + (f" — replace: {', '.join(set(weak_examples)[:3])}" if weak_examples else "")
+            + (f" — replace: {', '.join(list(set(weak_examples))[:3])}" if weak_examples else "")
         ),
     }
 
@@ -299,15 +299,17 @@ def audit(data: dict) -> dict:
     prof    = _check_profile(profile)
     rept    = _check_repetition(bullets, profile)
     compl   = _check_completeness(data)
+    dupes   = _check_duplicates(bullets)
 
     # Weighted overall score
     weights = {
-        "quantification": (quant["score"],   0.25),
+        "quantification": (quant["score"],   0.20),
         "action_verbs":   (verbs["score"],   0.20),
         "bullet_length":  (lengths["score"], 0.15),
         "profile":        (prof["score"],    0.15),
-        "repetition":     (rept["score"],    0.15),
+        "repetition":     (rept["score"],    0.10),
         "completeness":   (compl["score"],   0.10),
+        "duplicates":     (dupes["score"],   0.10),
     }
     overall = int(sum(s * w for s, w in weights.values()))
 
@@ -325,6 +327,7 @@ def audit(data: dict) -> dict:
         "bullet_length":   lengths,
         "profile":         prof,
         "repetition":      rept,
+        "duplicates":      dupes,
         "completeness":    compl,
     }
 

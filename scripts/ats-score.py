@@ -22,8 +22,15 @@ import os
 import re
 import sys
 from collections import Counter
+from datetime import datetime, timezone
+from pathlib import Path
 
 from lib.common import STOP_WORDS
+
+try:
+    import yaml
+except ImportError:
+    yaml = None
 
 # Patterns to detect job description sections
 SECTION_PATTERNS = {
@@ -153,6 +160,31 @@ def categorize_keyword(kw):
             if kw in hints or kw.replace(" ", "-") in hints:
                 return cat
     return best_cat
+
+
+def _record_ats_history(app_dir: str, score: float, found: int, total: int) -> None:
+    """Append ATS score entry to meta.yml ats_history list (best-effort, silent on error)."""
+    if yaml is None:
+        return
+    meta_path = Path(app_dir) / "meta.yml"
+    if not meta_path.exists():
+        return
+    try:
+        with open(meta_path, encoding="utf-8") as f:
+            meta = yaml.safe_load(f) or {}
+        history = meta.setdefault("ats_history", [])
+        history.append(
+            {
+                "date": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "score": round(score, 1),
+                "found": found,
+                "total": total,
+            }
+        )
+        with open(meta_path, "w", encoding="utf-8") as f:
+            yaml.dump(meta, f, allow_unicode=True, sort_keys=False)
+    except Exception:
+        pass
 
 
 def main():
