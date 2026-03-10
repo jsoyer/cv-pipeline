@@ -9,7 +9,7 @@
        archive-app linkedin-profile \
        interview-brief prep-star interview-debrief linkedin-post export-csv \
        elevator-pitch onboarding-plan cover-critique interview-sim \
-       cv-keywords blind-spots current pipeline tui \
+       cv-keywords blind-spots current pipeline \
        status-active completions-bash completions-fish completions-ps1 completions-nu \
        test coverage preview clean-all dev-setup validate-all predict \
        compare-providers accent cache-stats cache-clear \
@@ -1116,10 +1116,6 @@ ats-text:
 		$(PYTHON) scripts/ats-text.py $(if $(filter true,$(NO_CL)),--no-cl); \
 	fi
 
-# Launch the Textual TUI (Terminal User Interface)
-# Usage: make tui
-tui:
-	@$(PYTHON) scripts/tui.py
 
 # ---------------------------------------------------------------------------
 # Shell completions
@@ -1538,7 +1534,7 @@ help:
 	@echo "  make apply-board [STAGE=...]      Terminal Kanban board — applications by stage"
 	@echo "  make archive-app NAME=... [OUTCOME=...]  Enhanced archive with summary + git tag"
 	@echo "  make linkedin [PUSH=true]         LinkedIn sync (dry-run default)"
-	@echo "  make tui                          Interactive terminal UI (Textual)"
+
 	@echo "  make doctor                       Check all dependencies + API keys"
 	@echo "  make hooks                        Install git pre-commit hooks"
 	@echo "  make clean                        Remove generated files"
